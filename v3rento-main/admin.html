@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rento — консоль оператора</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF1F7;--surface:#FFFFFF;--surface-2:#F3F5FA;
+  --ink:#10162A;--ink-2:#4A5570;--ink-3:#8B93A8;
+  --line:#E2E6F0;--line-2:#CDD4E4;
+  --primary:#2A56C6;--primary-deep:#1C3F9A;--green:#2B63D9;
+  --mint-soft:#EEF2FA;--green-soft:#E4EAF8;--gold:#C47B1A;--gold-soft:#FDF3E0;
+  --red:#CB554A;--red-soft:#F8E5E2;
+  --shadow:0 1px 2px rgba(16,22,42,.05),0 12px 26px -16px rgba(16,22,42,.16);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:'Onest',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);
+  -webkit-font-smoothing:antialiased;background:var(--bg);min-height:100vh;padding:28px 20px 60px;
+}
+.u{font-family:'Unbounded','Onest',sans-serif;letter-spacing:-.015em}
+.wrap{max-width:960px;margin:0 auto}
+.top{display:flex;align-items:center;gap:13px;margin-bottom:26px}
+.mark{width:44px;height:44px;border-radius:14px;background:linear-gradient(145deg,#D4DCF5,#8BA0D4);display:grid;place-items:center;font-size:23px;flex:none}
+.top h1{font-size:19px;font-weight:700}
+.top .sub{font-size:12.5px;color:var(--ink-3)}
+.top a{margin-left:auto;font-size:13px;color:var(--primary);font-weight:600;text-decoration:none}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}body{padding:18px 14px 50px}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:20px 20px 18px}
+.card h2{font-size:15px;font-weight:700;margin-bottom:4px}
+.card .hint{font-size:12.5px;color:var(--ink-3);margin-bottom:16px;line-height:1.5}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+label{font-size:10.5px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.07em}
+label .opt{font-weight:400;text-transform:none;letter-spacing:0}
+input{background:var(--surface-2);border:1.5px solid var(--line);border-radius:11px;padding:12px 13px;font-family:inherit;font-size:14.5px;color:var(--ink);outline:none;transition:all .14s;width:100%}
+input:focus{border-color:var(--primary);background:var(--surface);box-shadow:0 0 0 3px var(--mint-soft)}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--primary);color:#fff;font-family:inherit;font-weight:600;font-size:14.5px;padding:13px;border-radius:12px;border:none;cursor:pointer;width:100%;transition:all .15s}
+.btn:hover:not(:disabled){background:var(--primary-deep)}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.btn.sm{width:auto;padding:8px 14px;font-size:12.5px;border-radius:9px}
+.btn.ghost{background:var(--surface-2);color:var(--primary);border:1.5px solid var(--line-2)}
+.err{background:var(--red-soft);border:1px solid #f0c9c4;color:var(--red);font-size:12.5px;padding:10px 12px;border-radius:10px;margin-bottom:12px;display:none}
+.err.show{display:block}
+.created{background:var(--green-soft);border:1px solid #bfe6cc;border-radius:12px;padding:14px 15px;margin-top:14px;display:none}
+.created.show{display:block}
+.created .r{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:4px 0}
+.created .r b{font-family:'SF Mono',Consolas,monospace}
+.created .cta{display:flex;gap:8px;margin-top:10px}
+.leads{display:flex;flex-direction:column;gap:9px;max-height:460px;overflow:auto}
+.lead{border:1px solid var(--line);border-radius:12px;padding:12px 13px}
+.lead .nm{font-weight:600;font-size:14px}
+.lead .meta{font-size:12.5px;color:var(--ink-2);margin-top:2px}
+.lead .biz{font-size:12px;color:var(--ink-3);margin-top:2px}
+.lead .row{display:flex;align-items:center;gap:8px;margin-top:10px}
+.lead .t{font-size:11px;color:var(--ink-3);margin-left:auto}
+.empty{text-align:center;color:var(--ink-3);font-size:13px;padding:26px}
+.tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--mint-soft);color:var(--green)}
+.tlist{display:flex;flex-direction:column;gap:7px;margin-top:6px}
+.trow{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:11px;font-size:13px}
+.trow .s{margin-left:auto;font-size:11.5px;color:var(--ink-3)}
+.copy{cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="mark">🎭</div>
+    <div><h1 class="u">Rento · консоль оператора</h1><div class="sub">заявки и аккаунты клиентов</div></div>
+    <a href="/">← в приложение</a>
+  </div>
+
+  <div id="denied" class="card" style="display:none;text-align:center">
+    <h2>Доступ только оператору</h2>
+    <div class="hint" style="margin:8px 0 0">Эта консоль доступна только владельцу платформы. Войдите под аккаунтом оператора.</div>
+  </div>
+
+  <div id="main" style="display:none">
+    <div class="grid">
+      <!-- Заявки -->
+      <div class="card">
+        <h2>Заявки <span id="leadCount" class="tag" style="display:none"></span></h2>
+        <div class="hint">Приходят со страницы входа. Нажми «Создать аккаунт» — данные подставятся в форму справа.</div>
+        <div id="leads" class="leads"><div class="empty">Загрузка…</div></div>
+      </div>
+
+      <!-- Создать аккаунт -->
+      <div class="card">
+        <h2>Создать аккаунт клиента</h2>
+        <div class="hint">Новый изолированный прокат со своим владельцем. Ты остаёшься в своём аккаунте.</div>
+        <div class="err" id="err"></div>
+        <form id="form" autocomplete="off" novalidate>
+          <div class="field"><label>Название проката</label><input id="shopName" maxlength="80" placeholder="Прокат «Сказка»"></div>
+          <div class="field"><label>Имя владельца <span class="opt">— необязательно</span></label><input id="ownerName" maxlength="60"></div>
+          <div class="field"><label>Логин для входа</label><input id="login" maxlength="40" placeholder="skazka" autocapitalize="off" spellcheck="false"></div>
+          <div class="field"><label>Пароль <span class="opt">— пусто = сгенерируем, свой — от 8 символов</span></label><input id="password" maxlength="64" placeholder="минимум 8 символов, либо оставьте пустым"></div>
+          <button class="btn" type="submit" id="submit">Создать аккаунт</button>
+        </form>
+        <div class="created" id="created">
+          <div style="font-weight:700;font-size:14px;margin-bottom:8px">✓ Аккаунт создан — передай клиенту</div>
+          <div class="r"><span>Прокат</span><b id="cName">—</b></div>
+          <div class="r"><span>Логин</span><b id="cLogin" class="copy" title="Скопировать">—</b></div>
+          <div class="r"><span>Пароль</span><b id="cPass" class="copy" title="Скопировать">—</b></div>
+          <div class="r"><span>Ссылка</span><b id="cUrl" class="copy" title="Скопировать" style="font-size:11px">—</b></div>
+          <div class="cta">
+            <button class="btn sm" id="copyAll" type="button">Скопировать всё</button>
+            <button class="btn sm ghost" id="newOne" type="button">Ещё аккаунт</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Прокаты -->
+    <div class="card" style="margin-top:18px">
+      <h2>Все прокаты <span id="tenCount" class="tag" style="display:none"></span></h2>
+      <div id="tenants" class="tlist"><div class="empty">Загрузка…</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+async function api(path, opts = {}) {
+  const res = await fetch('/api' + path, {
+    ...opts, credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  if (res.status === 401) { location.replace('/login.html'); throw new Error('unauthorized'); }
+  const data = await res.json().catch(() => ({ ok: false }));
+  return { status: res.status, data };
+}
+const esc = (s) => String(s ?? '').replace(/[<&>"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+const fmtDate = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }); };
+
+// ---- Проверка доступа + загрузка ----
+async function boot() {
+  const { status, data } = await api('/leads');
+  if (status === 403) { $('denied').style.display = 'block'; return; }
+  $('main').style.display = 'block';
+  renderLeads(data.items || []);
+  loadTenants();
+}
+
+function renderLeads(items) {
+  const el = $('leads');
+  if (!items.length) { el.innerHTML = '<div class="empty">Пока нет заявок</div>'; return; }
+  $('leadCount').style.display = 'inline-block'; $('leadCount').textContent = items.length;
+  el.innerHTML = items.map((l) => `
+    <div class="lead">
+      <div class="nm">${esc(l.name)}</div>
+      <div class="meta">📞 ${esc(l.phone)}</div>
+      ${l.business ? `<div class="biz">🏪 ${esc(l.business)}</div>` : ''}
+      ${l.comment ? `<div class="biz">💬 ${esc(l.comment)}</div>` : ''}
+      <div class="row">
+        <button class="btn sm" data-fill data-shop="${esc(l.business || '')}" data-name="${esc(l.name)}">Создать аккаунт</button>
+        <span class="t">${fmtDate(l.created_at)}</span>
+      </div>
+    </div>`).join('');
+  el.querySelectorAll('[data-fill]').forEach((b) => b.addEventListener('click', () => {
+    $('shopName').value = b.dataset.shop || '';
+    $('ownerName').value = b.dataset.name || '';
+    $('login').focus();
+    $('shopName').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }));
+}
+
+async function loadTenants() {
+  const { data } = await api('/admin/tenants');
+  const el = $('tenants');
+  const items = data.items || [];
+  $('tenCount').style.display = 'inline-block'; $('tenCount').textContent = items.length;
+  el.innerHTML = items.map((t) => `
+    <div class="trow">
+      <b>${esc(t.name)}</b>
+      <span style="color:var(--ink-3)">/${esc(t.slug)}</span>
+      <span class="s">${t.users} польз. · ${t.orders} заказ. · ${fmtDate(t.created_at)}</span>
+    </div>`).join('') || '<div class="empty">Нет прокатов</div>';
+}
+
+// ---- Создание аккаунта ----
+$('form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('err').classList.remove('show');
+  const body = {
+    shopName: $('shopName').value.trim(),
+    name: $('ownerName').value.trim(),
+    login: $('login').value.trim(),
+    password: $('password').value,
+  };
+  const btn = $('submit'); btn.disabled = true; btn.textContent = 'Создаём…';
+  try {
+    const { data } = await api('/admin/create-account', { method: 'POST', body });
+    if (!data.ok) { $('err').textContent = data.error || 'Ошибка'; $('err').classList.add('show'); return; }
+    const a = data.account;
+    $('cName').textContent = a.tenant_name;
+    $('cLogin').textContent = a.login;
+    $('cPass').textContent = a.password;
+    $('cUrl').textContent = a.login_url;
+    $('created').classList.add('show');
+    $('form').style.display = 'none';
+    loadTenants();
+  } catch { $('err').textContent = 'Сетевая ошибка'; $('err').classList.add('show'); }
+  finally { btn.disabled = false; btn.textContent = 'Создать аккаунт'; }
+});
+
+function copyText(t) { navigator.clipboard?.writeText(t).catch(() => {}); }
+document.querySelectorAll('.copy').forEach(() => {});
+['cLogin', 'cPass', 'cUrl'].forEach((id) => $(id).addEventListener('click', () => copyText($(id).textContent)));
+$('copyAll').addEventListener('click', () => {
+  copyText(`Прокат: ${$('cName').textContent}\nЛогин: ${$('cLogin').textContent}\nПароль: ${$('cPass').textContent}\nВход: ${$('cUrl').textContent}`);
+  $('copyAll').textContent = 'Скопировано ✓';
+  setTimeout(() => $('copyAll').textContent = 'Скопировать всё', 1500);
+});
+$('newOne').addEventListener('click', () => {
+  $('created').classList.remove('show'); $('form').style.display = '';
+  ['shopName', 'ownerName', 'login', 'password'].forEach((id) => $(id).value = '');
+  $('shopName').focus();
+});
+
+boot();
+</script>
+</body>
+</html>

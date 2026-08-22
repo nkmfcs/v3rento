@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="ru" class="app-loading">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rento — мобайл</title>
+<!-- Telegram Mini App SDK: даёт ready()/expand() и безопасные зоны (safeAreaInset).
+     Вне Телеграма window.Telegram.WebApp не появляется — верстка браузера не меняется. -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+  // Страховка: если init не отработает (ошибка JS) — всё равно показываем интерфейс.
+  setTimeout(function(){ document.documentElement.classList.remove('app-loading'); }, 8000);
+</script>
+<!-- Критический стиль загрузочного гейта — ИНЛАЙН, чтобы применился на первом же кадре,
+     до загрузки внешнего CSS. Иначе демо-разметка «Карнавала» из HTML мелькает, пока
+     tokens.css ещё грузится (кэш/ревалидация/медленная сеть). Класс снимает init (в finally). -->
+<style>
+  html.app-loading body{visibility:hidden}
+  html.app-loading::before{content:'';position:fixed;inset:0;background:#EEF1F7;z-index:9998}
+  html.app-loading::after{
+    content:'';position:fixed;top:50%;left:50%;width:32px;height:32px;margin:-16px 0 0 -16px;
+    border:3px solid #CDD4E4;border-top-color:#2A56C6;border-radius:50%;
+    animation:app-spin .8s linear infinite;z-index:9999;
+  }
+  @keyframes app-spin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){html.app-loading::after{animation:none}}
+</style>
+<link rel="stylesheet" href="/css/tokens.css?v=60">
+<link rel="stylesheet" href="/css/mobile.css?v=58">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F1F8F0"/><stop offset="1" stop-color="#E7F1E7"/></linearGradient>
+</defs></svg>
+
+<div class="screen">
+
+  <!-- ХЕДЕР (меняется по вкладке) -->
+  <div class="appbar" id="appbar"></div>
+
+  <!-- HOME TOP — тёмный единый блок: приветствие + hero (только на главной) -->
+  <div class="home-top active" id="homeTop">
+    <div class="home-greet">
+      <div class="home-app-name">RENTO</div>
+    </div>
+    <div class="hero">
+      <button class="eye-btn" aria-label="Скрыть/показать суммы" aria-pressed="false"></button>
+      <div class="hero-hd">
+        <div class="cap" id="heroCap"><svg width="14" height="14" fill="none" stroke="#D4DCF5" stroke-width="2" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/></svg>Заработано в августе</div>
+        <span class="delta" id="heroDelta">↑18%</span>
+      </div>
+      <div class="hero-amt u mask" id="heroRevenue">0 сум</div>
+      <div class="hero-pills"><div class="hero-pill"><div class="k">Должны клиенты</div><div class="v mask" id="heroDebt">—</div></div><div class="hero-pill"><div class="k">Залоги на руках</div><div class="v mask" id="heroDeposit">—</div></div></div>
+    </div>
+  </div>
+
+  <!-- КОНТЕНТ -->
+  <div class="scroll" id="scroll">
+
+    <!-- ГЛАВНАЯ -->
+    <section class="tab-view active" id="t-home">
+
+      <div class="sec-title" style="margin-top:0;margin-bottom:5px">Сегодня</div>
+      <div class="qscroll">
+        <div class="qstat"><div class="qi give"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div><div class="qn">0</div><div class="ql">Выдать</div></div>
+        <div class="qstat"><div class="qi take"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></div><div class="qn">0</div><div class="ql">Принять</div></div>
+        <div class="qstat"><div class="qi over"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9l-8 14A2 2 0 004 21h16a2 2 0 001.7-3l-8-14a2 2 0 00-3.4 0z"/></svg></div><div class="qn" style="color:var(--red)">0</div><div class="ql">Просрочка</div></div>
+        <div class="qstat"><div class="qi pick"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M20 7L9 18l-5-5"/></svg></div><div class="qn">0</div><div class="ql">Собрать</div></div>
+      </div>
+
+      <div class="sec-title">Очередь на сегодня <span class="lnk">Все →</span></div>
+      <div class="card" id="homeQueueCard"></div>
+
+      <div class="sec-title" style="margin-top:20px">Ближайшие брони</div>
+      <div class="card" id="homeBookingsCard"></div>
+    </section>
+
+    <!-- ЗАКАЗЫ -->
+    <section class="tab-view" id="t-orders">
+      <label class="nof-search" style="margin:0 0 12px"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input id="ordSearch" placeholder="Номер, клиент, костюм" autocomplete="off"></label>
+
+      <div class="ord-switch" id="ordSwitch">
+        <button type="button" class="ovt on" data-ov="day">На дату</button>
+        <button type="button" class="ovt" data-ov="all">Все заказы</button>
+      </div>
+
+      <div id="ordDayPane">
+        <div class="card blk mcal-card">
+          <div class="mcal-nav">
+            <button id="mCalPrev" type="button" aria-label="Предыдущий месяц">‹</button>
+            <div id="mCalTitle">Август 2026</div>
+            <button id="mCalNext" type="button" aria-label="Следующий месяц">›</button>
+            <button id="mCalToday" type="button">Сегодня</button>
+          </div>
+          <div id="mOrdMiniCal"></div>
+        </div>
+
+        <div class="card blk" id="mOrdNearCard">
+          <div class="set-m-hd mnear-hd"><span id="mOrdNearTitle">Сегодня</span><span id="mOrdNearMeta"></span></div>
+          <div id="mOrdNearList"></div>
+        </div>
+      </div>
+
+      <div id="ordAllPane" hidden>
+        <div class="filt" id="ordFilt"><button class="fchip on" data-flt="all">Все</button><button class="fchip" data-flt="active">Активные</button><button class="fchip" data-flt="today">Сегодня</button><button class="fchip" data-flt="over">Просрочки</button><button class="fchip" data-flt="debt">С долгом</button></div>
+        <div id="ordersList"></div>
+        <div id="ordersEmpty" style="display:none" class="empty-state"><div class="empty-title">Заказов пока нет</div><div class="empty-sub">Создайте первый заказ кнопкой +</div></div>
+      </div>
+    </section>
+
+    <!-- КАРТОЧКА ЗАКАЗА -->
+    <section class="tab-view" id="t-order">
+      <div class="det-hero">
+        <div class="top"><div class="big" id="detArt"></div><div style="flex:1"><div class="id" id="detId">Заказ №1045</div><div class="cl" id="detCl">Шохрух М.</div></div><span class="stat-light" id="detStatus">Сборка</span></div>
+        <div id="detTl"></div>
+      </div>
+
+      <div class="card blk">
+        <div class="blk-h"><h3>Костюмы</h3><span class="meta" id="detItemsMeta"></span></div>
+        <div id="detItems"></div>
+      </div>
+
+      <div class="card blk" id="detAssemblyCard" style="display:none">
+        <div class="blk-h"><h3>Сборка</h3><span class="meta" id="detAssemblyStatus"></span></div>
+        <div id="detAssembly"></div>
+      </div>
+
+      <div class="card blk" id="detCheckCard">
+        <div class="blk-h"><h3>Чек-лист сборки</h3><span class="meta ok" id="detCheckMeta"></span></div>
+        <div id="detChecks"></div>
+        <div id="detAssembleBtnWrap" style="margin-top:12px"></div>
+      </div>
+
+      <div class="card blk">
+        <div class="blk-h"><h3>Деньги</h3><span class="pay-badge" id="detPayBadge">✓ Оплачено</span></div>
+        <div id="detMoney"></div>
+        <div class="twocol"><div class="mini"><div class="k">Залог</div><div class="v" id="detDep">150 000</div></div><div class="mini"><div class="k">Способ</div><div class="v" id="detPay">Карта</div></div></div>
+      </div>
+
+      <div class="card blk" id="detDelCard" style="display:none">
+        <div class="blk-h"><h3>Адрес клиента</h3></div>
+        <div id="detDelInfo"></div>
+      </div>
+
+      <div class="card blk" id="detHistCard" style="display:none">
+        <div class="blk-h"><h3>История</h3></div>
+        <div id="detHistory"></div>
+      </div>
+
+      <div id="detActions"></div>
+    </section>
+
+    <!-- НОВЫЙ ЗАКАЗ -->
+    <section class="tab-view" id="t-new-order">
+      <div class="nof-block card">
+        <div class="nof-label">Клиент</div>
+        <label class="nof-search"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input id="noClSearch" placeholder="Имя или телефон…" autocomplete="off"></label>
+        <div id="noClPicked" style="display:none"></div>
+        <div id="noClList" style="display:none"></div>
+        <div id="noAddrPick" style="display:none"></div>
+      </div>
+
+      <div class="nof-block card">
+        <div class="nof-label">Костюмы <span id="noItemsMeta" style="color:var(--ink-3);font-weight:400;text-transform:none;font-size:12px"></span></div>
+        <div id="noItemsList"></div>
+        <button class="nof-add" id="noPickFromWh" style="background:none;border:none;width:100%;color:var(--primary);font-weight:600;padding:10px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;cursor:pointer"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24"><path d="M3 9l9-6 9 6v11a1 1 0 01-1 1H4a1 1 0 01-1-1V9zM9 21V12h6v9"/></svg>Выбрать со склада</button>
+      </div>
+
+      <div class="nof-block card">
+        <div class="nof-label" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <span>Даты аренды</span>
+          <span class="nof-days-inline" id="noDays">1<small>дн</small></span>
+        </div>
+        <div class="nof-dates">
+          <div class="nof-date-fld"><div class="nof-date-lbl">Выдача</div><input class="nof-input nof-date" id="noFrom" type="date"></div>
+          <div class="nof-date-sep">→</div>
+          <div class="nof-date-fld"><div class="nof-date-lbl">Возврат</div><input class="nof-input nof-date" id="noTo" type="date"></div>
+        </div>
+        <div class="nof-slot" id="noSlot" style="display:flex;gap:8px;margin-top:12px">
+          <button type="button" class="nof-toggle active" data-slot="am">Утро</button>
+          <button type="button" class="nof-toggle" data-slot="pm">После 12</button>
+        </div>
+      </div>
+
+      <div class="nof-block card">
+        <div class="nof-label">Оплата</div>
+        <div id="noMoney"></div>
+        <div style="display:flex;gap:8px;margin-top:14px" id="noPay">
+          <button class="nof-toggle active" data-pay="Карта">💳 Карта</button>
+          <button class="nof-toggle" data-pay="Наличные">💵 Нал</button>
+          <button class="nof-toggle" data-pay="Перевод">📱 Перевод</button>
+        </div>
+        <div style="margin-top:12px"><div style="font-size:11px;color:var(--ink-3);margin-bottom:4px">Залог (по желанию)</div><input class="nof-input" id="noDep" type="text" placeholder="0" style="font-weight:700;font-size:16px"></div>
+      </div>
+
+      <button class="btn" id="noCreate" style="margin-top:4px">Создать заказ →</button>
+      <button class="btn ghost" id="noDraft" style="margin-top:9px;margin-bottom:8px">Сохранить черновик</button>
+    </section>
+
+    <!-- МОИ ЗАКАЗЫ (очередь сборки) -->
+    <section class="tab-view" id="t-mine">
+      <div class="sec-title">Очередь сборки — что горит раньше</div>
+      <div id="mMineList"></div>
+    </section>
+
+    <!-- ЕЩЁ -->
+    <section class="tab-view" id="t-more">
+      <div class="more-user card" data-go="profile" style="cursor:pointer">
+        <div class="av-btn" id="moreAv" style="width:52px;height:52px;font-size:17px;flex:none">МК</div>
+        <div style="flex:1;min-width:0"><div class="nm" id="moreName" style="font-size:16px;font-weight:700">Владелец</div><div id="moreSub" style="font-size:12.5px;color:var(--ink-3);margin-top:2px">RENTO</div></div>
+        <svg width="16" height="16" fill="none" stroke="var(--ink-3)" stroke-width="2.2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="more-list">
+        <div class="more-tile" data-go="mine"><div class="more-ico" style="background:var(--mint-soft);color:var(--primary)"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div><div class="more-lbl">Мои заказы</div></div>
+        <div class="more-tile" data-go="clients"><div class="more-ico" style="background:var(--teal-soft);color:var(--teal)"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M17 20v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M10 10a3 3 0 100-6 3 3 0 000 6zM21 20v-2a4 4 0 00-3-3.87M16 4.13A4 4 0 0119 8"/></svg></div><div class="more-lbl">Клиенты</div></div>
+        <div class="more-tile" data-go="rooms"><div class="more-ico" style="background:var(--mint-soft);color:var(--primary)"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M3 21V8l9-5 9 5v13M9 21V12h6v9"/></svg></div><div class="more-lbl">Комнаты</div></div>
+      </div>
+      <div class="more-list">
+        <div class="more-tile" data-go="money"><div class="more-ico" style="background:var(--mint-soft);color:var(--primary)"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div><div class="more-lbl">Деньги</div></div>
+        <div class="more-tile" data-go="team"><div class="more-ico" style="background:var(--teal-soft);color:var(--teal)"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></div><div class="more-lbl">Команда</div></div>
+        <div class="more-tile" data-go="tg"><div class="more-ico" style="background:var(--teal-soft);color:var(--teal)"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M22 3L2 10.5l6 2.5m14-10l-3 17-6-5m9-12L8.5 16M8 13v5l3-2.5"/></svg></div><div class="more-lbl">Telegram</div></div>
+      </div>
+      <div class="more-list">
+        <div class="more-tile" data-go="settings"><div class="more-ico" style="background:var(--surface-2);color:var(--ink-2)"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div><div class="more-lbl">Настройки</div></div>
+      </div>
+      <div class="more-ver" id="moreVer">RENTO</div>
+    </section>
+
+    <!-- ДЕНЬГИ -->
+    <section class="tab-view" id="t-money">
+      <div class="hero" style="margin-bottom:18px">
+        <div class="cap" id="mMoneyCap"><svg width="14" height="14" fill="none" stroke="#D4DCF5" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Финансы · Июнь 2026</div>
+        <div class="big u"><span id="mMoneyBig">0</span> <small id="mMoneyUnit">сум</small><span class="delta" id="mMoneyDelta"></span></div>
+        <div class="hero-pills">
+          <div class="hero-pill"><div class="k">Расходы</div><div class="v" style="color:#F97B72" id="mMoneyExp">0</div></div>
+          <div class="hero-pill"><div class="k">Прибыль</div><div class="v" style="color:#D4DCF5" id="mMoneyProfit">0</div></div>
+        </div>
+      </div>
+
+      <div class="sec-title">Источники дохода</div>
+      <div class="card blk" id="mMoneyIncomeCats"></div>
+
+      <div class="sec-title">Расходы</div>
+      <div class="card blk" id="mMoneyExpenseCats"></div>
+
+      <div class="sec-title">Последние платежи</div>
+      <div class="card" id="mMoneyPayments"></div>
+      <button class="btn ghost" id="mGoFinance" style="width:100%;justify-content:center;margin-top:14px">
+        💸 Контроль расходов и зарплат →
+      </button>
+    </section>
+
+    <!-- ФИНАНСОВЫЙ КОНТРОЛЬ -->
+    <section class="tab-view" id="t-finance">
+      <div class="hero" style="margin-bottom:18px" id="finHero"></div>
+
+      <div class="sec-title">Зарплаты
+        <button class="lnk-act" id="finAddSalary">+ Выплатить</button>
+      </div>
+      <div class="card blk" id="finSalaries"></div>
+
+      <div class="sec-title" style="margin-top:20px">Постоянные расходы</div>
+      <div class="card blk" id="finFixed"></div>
+
+      <div class="sec-title" style="margin-top:20px">Разовые расходы
+        <button class="lnk-act" id="finAddExpense">+ Добавить</button>
+      </div>
+      <div class="card blk" id="finOneoff"></div>
+    </section>
+
+    <!-- КОМНАТЫ / СТЕЛЛАЖИ -->
+    <section class="tab-view" id="t-rooms">
+      <div id="roomsRoot"></div>
+    </section>
+
+    <section class="tab-view" id="t-clients">
+      <button class="btn" id="mAddClient" style="width:100%;justify-content:center;margin-bottom:14px"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Добавить клиента</button>
+      <div id="clientsList"></div>
+    </section>
+
+    <!-- СКЛАД -->
+    <section class="tab-view" id="t-wh">
+      <button type="button" class="wh-rooms-go" id="whRoomsGo">
+        <div class="rm-mini"><i class="a"></i><span><i class="b"></i><i></i><i class="c"></i></span></div>
+        <div><div class="nm">Комнаты</div><div class="ds">План стеллажей · где лежит</div></div>
+        <span class="ch">›</span>
+      </button>
+      <div class="wh-search" id="whSearchBox" hidden>
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+        <input id="whSearch" placeholder="Название, размер, полка…" autocomplete="off">
+      </div>
+      <div class="filt wh-filt">
+        <button class="fchip on" data-wh-f="all">Все <span class="fc-c" id="whcAll">0</span></button>
+        <button class="fchip" data-wh-f="avail">В наличии <span class="fc-c avail" id="whcAvail">0</span></button>
+        <button class="fchip" data-wh-f="out">На прокате <span class="fc-c out" id="whcOut">0</span></button>
+        <button class="fchip" data-wh-f="rep">Ремонт <span class="fc-c rep" id="whcRep">0</span></button>
+      </div>
+      <div class="cost-grid" id="costGrid"></div>
+    </section>
+    <div class="wh-pickbar" id="pickBar" hidden>
+      <div class="wh-pick-copy">
+        <div class="wh-pick-n" id="pickCount">0 выбрано</div>
+        <div class="wh-pick-s">Нажмите карточку, чтобы добавить</div>
+      </div>
+      <button type="button" class="wh-pick-go" id="pickDone">Готово</button>
+    </div>
+
+    <!-- КАРТОЧКА КОСТЮМА -->
+    <section class="tab-view" id="t-costume">
+      <div class="card blk" style="text-align:center;padding:22px 16px;margin-bottom:14px">
+        <div id="mcstArt" style="width:100px;height:100px;margin:0 auto 12px;background:var(--surface-2);border-radius:20px;display:grid;place-items:center;overflow:hidden"></div>
+        <div id="mcstPhotos" class="photo-strip"></div>
+        <div style="font-size:18px;font-weight:700" id="mcstName">—</div>
+        <div style="font-size:12.5px;color:var(--ink-3);margin-top:5px"><span id="mcstStatus"></span> · <span id="mcstSizes">—</span></div>
+        <div style="font-size:15px;font-weight:700;color:var(--primary);margin-top:8px" id="mcstPrice">— сум/день</div>
+        <button class="btn ghost sm" id="mcstEdit" style="margin-top:14px">✎ Редактировать</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div class="card blk" style="padding:14px"><div id="mcstAvail" style="font-size:20px;font-weight:700;color:var(--green)">0</div><div style="font-size:11px;color:var(--ink-3);margin-top:2px">свободно</div></div>
+        <div class="card blk" style="padding:14px"><div id="mcstOut" style="font-size:20px;font-weight:700">0</div><div style="font-size:11px;color:var(--ink-3);margin-top:2px">на прокате</div></div>
+        <div class="card blk" style="padding:14px"><div id="mcstTotal" style="font-size:20px;font-weight:700">0</div><div style="font-size:11px;color:var(--ink-3);margin-top:2px">всего единиц</div></div>
+        <div class="card blk" style="padding:14px"><div id="mcstRev" style="font-size:14px;font-weight:700;color:var(--primary)">0</div><div style="font-size:11px;color:var(--ink-3);margin-top:2px">заработано</div></div>
+      </div>
+
+      <div class="card blk" style="margin-bottom:12px">
+        <div class="set-m-hd">Характеристики</div>
+        <div id="mcstFields"></div>
+      </div>
+
+      <div class="card blk" id="mcstNoteCard" style="margin-bottom:12px">
+        <div class="set-m-hd">Описание</div>
+        <div id="mcstNote" style="padding:8px 16px 14px;font-size:13.5px;color:var(--ink-2);line-height:1.5"></div>
+      </div>
+
+      <div class="card blk" id="mcstOrdersCard" style="margin-bottom:14px">
+        <div class="set-m-hd">История заказов</div>
+        <div id="mcstOrders"></div>
+      </div>
+
+      <button class="btn" id="mcstNew" style="width:100%;justify-content:center;margin-bottom:10px"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Создать заказ с этим костюмом</button>
+      <button class="btn ghost" id="mcstDelete" style="width:100%;justify-content:center;color:var(--red);margin-bottom:14px">Удалить из склада</button>
+    </section>
+
+    <!-- TELEGRAM (mobile) -->
+    <section class="tab-view" id="t-tg">
+      <div class="card blk" id="tgStatusCard" style="margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <span class="tg-pill" id="tgStatusPill"><span class="tg-dot"></span><span id="tgStatusLabel">Не настроен</span></span>
+          <span style="font-size:12px;color:var(--ink-3)" id="tgBotName"></span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="tgStats">
+          <div style="background:var(--surface-2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:700" id="tgStatReq">—</div><div style="font-size:10px;color:var(--ink-3);margin-top:2px">Запросов</div></div>
+          <div style="background:var(--surface-2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--green)" id="tgStatActive">—</div><div style="font-size:10px;color:var(--ink-3);margin-top:2px">Активных</div></div>
+          <div style="background:var(--surface-2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--gold)" id="tgStatOver">—</div><div style="font-size:10px;color:var(--ink-3);margin-top:2px">Просрочка</div></div>
+        </div>
+        <button class="btn ghost" id="tgSetupBtn" style="margin-top:14px;font-size:13px">⚙️ Настроить Telegram-бота</button>
+      </div>
+      <div class="sec-title">Уведомления</div>
+      <div id="tgNotifList"></div>
+    </section>
+
+    <!-- КОМАНДА (mobile) -->
+    <section class="tab-view" id="t-team">
+      <button class="btn" id="mAddTeam" style="width:100%;justify-content:center;margin-bottom:14px"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Пригласить сотрудника</button>
+      <div id="teamMList"></div>
+    </section>
+
+    <!-- НАСТРОЙКИ (mobile) -->
+    <section class="tab-view" id="t-settings">
+      <div class="card blk" style="margin-bottom:12px">
+        <div class="set-m-hd">Прокат <button class="set-edit-btn" data-sec="shop">✎ Изменить</button></div>
+        <div id="setMShop"></div>
+      </div>
+      <div class="card blk" style="margin-bottom:12px">
+        <div class="set-m-hd">Ценообразование <button class="set-edit-btn" data-sec="price">✎ Изменить</button></div>
+        <div id="setMPrice"></div>
+      </div>
+      <div class="card blk" style="margin-bottom:12px">
+        <div class="set-m-hd">Уведомления</div>
+        <div id="setMNotif"></div>
+      </div>
+    </section>
+
+    <!-- КАРТОЧКА КЛИЕНТА -->
+    <section class="tab-view" id="t-client">
+      <div class="card blk" style="text-align:center;padding:22px 16px;margin-bottom:14px">
+        <div class="av-btn" id="mclAv" style="width:72px;height:72px;font-size:22px;margin:0 auto 12px;background:linear-gradient(135deg,#D4DCF5,#8BA0D4)">МК</div>
+        <div style="font-size:18px;font-weight:700" id="mclName">—</div>
+        <div style="font-size:12.5px;color:var(--ink-3);margin-top:5px" id="mclSub">—</div>
+        <button class="btn ghost sm" id="mclEdit" style="margin-top:14px">✎ Редактировать</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div class="card blk" style="padding:14px"><div id="mclOrd" style="font-size:20px;font-weight:700">0</div><div style="font-size:11px;color:var(--ink-3);margin-top:2px">заказов</div></div>
+        <div class="card blk" style="padding:14px"><div id="mclSum" style="font-size:20px;font-weight:700;color:var(--primary)">0</div><div style="font-size:11px;color:var(--ink-3);margin-top:2px">потрачено</div></div>
+        <div class="card blk" style="padding:14px"><div id="mclLast" style="font-size:14px;font-weight:700">—</div><div style="font-size:11px;color:var(--ink-3);margin-top:2px">последний</div></div>
+        <div class="card blk" id="mclDebtCard" style="padding:14px;display:none"><div id="mclDebt" style="font-size:18px;font-weight:700;color:var(--red)">0</div><div style="font-size:11px;color:var(--ink-3);margin-top:2px">задолженность</div></div>
+      </div>
+
+      <div class="card blk" style="margin-bottom:12px">
+        <div class="set-m-hd">Контакты</div>
+        <div id="mclFields"></div>
+      </div>
+
+      <div class="card blk" id="mclNoteCard" style="margin-bottom:12px;display:none">
+        <div class="set-m-hd">Заметка</div>
+        <div id="mclNote" style="padding:8px 16px 14px;font-size:13.5px;color:var(--ink-2);line-height:1.5"></div>
+      </div>
+
+      <div class="card blk" id="mclOrdersCard" style="margin-bottom:12px;display:none">
+        <div class="set-m-hd">Заказы клиента</div>
+        <div id="mclOrders"></div>
+      </div>
+
+      <button class="btn ghost" id="mclNew" style="width:100%;justify-content:center;margin-bottom:14px"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Создать заказ для клиента</button>
+    </section>
+
+    <!-- ПРОФИЛЬ -->
+    <section class="tab-view" id="t-profile">
+      <div class="card blk" style="margin-bottom:14px;text-align:center;padding:24px 18px">
+        <div class="av-btn" style="width:78px;height:78px;font-size:24px;margin:0 auto 12px;background:linear-gradient(135deg,#D4DCF5,#8BA0D4)">МК</div>
+        <div style="font-size:19px;font-weight:700" id="mPrfName">—</div>
+        <div style="font-size:12.5px;color:var(--ink-3);margin-top:5px" id="mPrfSub">—</div>
+        <button class="btn ghost sm" id="prfMEdit" style="margin-top:14px">✎ Редактировать</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div class="card blk" style="padding:14px"><div style="font-size:20px;font-weight:700" id="mPrfOrders">0</div><div style="font-size:11px;color:var(--ink-3);margin-top:2px">заказов всего</div></div>
+        <div class="card blk" style="padding:14px"><div style="font-size:20px;font-weight:700;color:var(--primary)" id="mPrfRevenue">0</div><div style="font-size:11px;color:var(--ink-3);margin-top:2px">принесено выручки</div></div>
+        <div class="card blk" style="padding:14px"><div style="font-size:20px;font-weight:700" id="mPrfClients">0</div><div style="font-size:11px;color:var(--ink-3);margin-top:2px">клиентов в базе</div></div>
+        <div class="card blk" style="padding:14px"><div style="font-size:20px;font-weight:700" id="mPrfDays">0</div><div style="font-size:11px;color:var(--ink-3);margin-top:2px">дней с прокатом</div></div>
+      </div>
+
+      <div class="card blk" style="margin-bottom:12px;display:none" id="mPrfAssemblerCard">
+        <div class="set-m-hd">Показатели сборки</div>
+        <div id="mPrfAssemblerBody"></div>
+      </div>
+
+      <div class="card blk" style="margin-bottom:12px">
+        <div class="set-m-hd">Личные данные</div>
+        <div class="set-m-row"><span class="k">Email</span><span class="v" id="mPrfEmail">—</span></div>
+        <div class="set-m-row"><span class="k">Телефон</span><span class="v" id="mPrfPhone">—</span></div>
+        <div class="set-m-row"><span class="k">Telegram</span><span class="v" id="mPrfTg">—</span></div>
+        <div class="set-m-row"><span class="k">День рождения</span><span class="v" id="mPrfBd">—</span></div>
+      </div>
+
+      <div class="card blk" style="margin-bottom:12px">
+        <div class="set-m-hd">Безопасность</div>
+        <div class="set-m-row" id="prfChangePw" style="cursor:pointer"><span class="k">Пароль</span><span class="v" style="color:var(--primary)">Сменить</span></div>
+        <div class="set-m-row" id="prfMLogoutAll" style="cursor:pointer"><span class="k">Сессии на устройствах</span><span class="v" style="color:var(--primary)">Выйти везде</span></div>
+        <div class="set-m-row" style="opacity:.55"><span class="k">2FA</span><span class="v" style="font-size:11px">в разработке</span></div>
+        <div class="set-m-row" style="opacity:.55"><span class="k">Пин-код при входе</span><span class="v" style="font-size:11px">в разработке</span></div>
+      </div>
+
+      <div class="card blk" style="margin-bottom:12px">
+        <div class="set-m-hd">Предпочтения</div>
+        <div class="set-m-row"><span class="k">Тема</span><span class="v">Светлая</span></div>
+        <div class="set-m-row"><span class="k">Язык</span><span class="v">Русский</span></div>
+        <div class="set-m-row"><span class="k">Уведомления e-mail</span><div class="m-toggle"></div></div>
+      </div>
+
+      <button class="btn ghost" id="prfMLogout" style="width:100%;justify-content:center;color:var(--red);border-color:#f0c9c4;background:var(--red-soft);margin-bottom:14px">↶ Выйти из аккаунта</button>
+    </section>
+
+    <!-- КАЛЕНДАРЬ -->
+    <section class="tab-view" id="t-cal">
+      <div class="cal-m-hd">
+        <button class="cal-m-nav">‹</button>
+        <div class="cal-m-mname">Июнь 2026</div>
+        <button class="cal-m-nav">›</button>
+      </div>
+      <div class="card" style="margin:0 16px;padding:0;overflow:hidden" id="mCalGrid"></div>
+      <div id="mCalList"></div>
+    </section>
+
+  </div>
+
+  <!-- НИЖНЯЯ НАВИГАЦИЯ -->
+  <nav class="tabbar" id="tabbar" aria-label="Главное меню">
+    <button class="tab on" data-tab="home" aria-label="Главная"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg><span class="tl2">Главная</span></button>
+    <button class="tab" data-tab="orders" aria-label="Заказы"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg><span class="tl2">Заказы</span></button>
+    <button class="fab" aria-label="Новый заказ"><svg fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button class="tab" data-tab="wh" aria-label="Склад"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9l9-6 9 6v11a1 1 0 01-1 1H4a1 1 0 01-1-1V9zM9 21V12h6v9"/></svg><span class="tl2">Склад</span></button>
+    <button class="tab" data-tab="more" aria-label="Ещё"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span class="tl2">Ещё</span></button>
+  </nav>
+
+</div>
+
+<script src="/js/api.js?v=55"></script>
+<script src="/js/util.js?v=59"></script>
+<script src="/js/art.js?v=50"></script>
+<script src="/js/mobile.js?v=87"></script>
+<script src="/js/ui.js?v=40"></script>
+</body>
+</html>

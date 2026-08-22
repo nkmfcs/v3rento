@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="ru" class="app-loading">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rento — десктоп</title>
+<script>
+  // авто-редирект на мобайл с узких экранов
+  if (innerWidth < 820 && !location.search.includes('pc=1')) {
+    location.replace('m/index.html' + location.search + location.hash);
+  }
+  // Страховка: если init не отработает (ошибка JS) — всё равно показываем интерфейс.
+  setTimeout(function(){ document.documentElement.classList.remove('app-loading'); }, 8000);
+</script>
+<!-- Критический стиль загрузочного гейта — ИНЛАЙН, чтобы применился на первом же кадре,
+     до загрузки внешнего CSS. Иначе демо-разметка «Карнавала» из HTML мелькает, пока
+     tokens.css ещё грузится (кэш/ревалидация/медленная сеть). Класс снимает init (в finally). -->
+<style>
+  html.app-loading body{visibility:hidden}
+  html.app-loading::before{content:'';position:fixed;inset:0;background:#EEF1F7;z-index:9998}
+  html.app-loading::after{
+    content:'';position:fixed;top:50%;left:50%;width:32px;height:32px;margin:-16px 0 0 -16px;
+    border:3px solid #CDD4E4;border-top-color:#2A56C6;border-radius:50%;
+    animation:app-spin .8s linear infinite;z-index:9999;
+  }
+  @keyframes app-spin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){html.app-loading::after{animation:none}}
+</style>
+<link rel="stylesheet" href="css/tokens.css?v=60">
+<link rel="stylesheet" href="css/pc.css?v=47">
+</head>
+<body>
+
+<!-- SVG defs: фон-стекло для иллюстраций костюмов -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F1F8F0"/><stop offset="1" stop-color="#E7F1E7"/></linearGradient>
+</defs></svg>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand"><div class="brand-mark">🎭</div><div><div class="brand-name u">Rento</div><div class="brand-sub">прокат «Карнавал»</div></div></div>
+    <nav class="nav" id="nav">
+      <div class="nav-label">Работа</div>
+      <button class="nav-item active" data-v="dash"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>Главная</button>
+      <button class="nav-item" data-v="orders"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>Заказы <span class="nav-badge warn" id="ordersBadge">5</span></button>
+      <button class="nav-item" data-v="mine"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Мои заказы</button>
+      <button class="nav-item" data-v="wh"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-6 9 6v11a1 1 0 01-1 1H4a1 1 0 01-1-1V9zM9 21V12h6v9"/></svg>Склад</button>
+      <button class="nav-item" data-v="rooms"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 21V8l9-5 9 5v13M9 21V12h6v9"/></svg>Комнаты</button>
+      <button class="nav-item" data-v="clients"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 20v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M10 10a3 3 0 100-6 3 3 0 000 6zM21 20v-2a4 4 0 00-3-3.87M16 4.13A4 4 0 0119 8"/></svg>Клиенты</button>
+      <button class="nav-item" data-v="cal"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 5h16a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zM3 10h18M8 3v4M16 3v4"/></svg>Календарь</button>
+      <button class="nav-item" data-v="money"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Деньги</button>
+      <div class="nav-label">Управление</div>
+      <button class="nav-item" data-v="tg"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M22 3L2 10.5l6 2.5m14-10l-3 17-6-5m9-12L8.5 16M8 13v5l3-2.5"/></svg>Telegram-бот</button>
+      <button class="nav-item" data-v="team"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Команда</button>
+      <button class="nav-item" data-v="settings"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Настройки</button>
+      <button class="nav-item" data-v="audit" id="navAudit" style="display:none"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 12h6M9 16h6"/></svg>Журнал</button>
+    </nav>
+    <div class="side-user"><div class="avatar">МК</div><div style="flex:1"><div class="nm">Малика К.</div><div class="rl">Владелец проката</div></div><svg width="16" height="16" fill="none" stroke="rgba(214,238,221,.5)" stroke-width="1.8" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="page-title"><h1 id="pgTitle"><button class="back" id="backBtn" aria-label="Назад">‹</button><span id="pgT">Главная</span></h1><p id="pgSub">—</p></div>
+      <label class="search"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input placeholder="Поиск заказа, клиента, костюма…" aria-label="Поиск"></label>
+      <div class="topbar-spacer"></div>
+      <button class="icon-btn" aria-label="Уведомления"><span class="dot" aria-hidden="true"></span><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg></button>
+      <button class="btn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Новый заказ</button>
+    </header>
+
+    <div class="content">
+      <!-- DASHBOARD -->
+      <section class="view active" id="dash">
+        <div class="grid today-row">
+          <div class="card tile" style="animation-delay:.02s"><div class="tile-top"><div class="tile-ico ic-give"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div><svg class="tile-arrow" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div><div><div class="tile-num" id="dTileIssue">4</div><div class="tile-lbl">Выдать сегодня</div></div><div class="tile-sub" id="dTileIssueSub">2 уже собраны · 2 в сборке</div></div>
+          <div class="card tile" style="animation-delay:.08s"><div class="tile-top"><div class="tile-ico ic-take"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></div><svg class="tile-arrow" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div><div><div class="tile-num" id="dTileReturn">3</div><div class="tile-lbl">Принять сегодня</div></div><div class="tile-sub" id="dTileReturnSub">проверить состояние, вернуть залог</div></div>
+          <div class="card tile" style="animation-delay:.14s"><div class="tile-top"><div class="tile-ico ic-over"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9l-8 14A2 2 0 004 21h16a2 2 0 001.7-3l-8-14a2 2 0 00-3.4 0z"/></svg></div><svg class="tile-arrow" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div><div><div class="tile-num" id="dTileOverdue" style="color:var(--red)">1</div><div class="tile-lbl">Просрочка</div></div><div class="tile-sub" id="dTileOverdueSub" style="color:var(--red)">костюм не вернули 2-й день</div></div>
+          <div class="card tile" style="animation-delay:.2s"><div class="tile-top"><div class="tile-ico ic-pick"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M20 7L9 18l-5-5"/></svg></div><svg class="tile-arrow" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div><div><div class="tile-num" id="dTileBuild">6</div><div class="tile-lbl">Собрать костюмов</div></div><div class="tile-sub" id="dTileBuildSub">Дилнара собирает 4 из 6</div></div>
+        </div>
+        <div class="grid dash-grid">
+          <div class="card">
+            <div class="panel-h"><h3>Очередь на сегодня</h3><span class="lnk">Все события →</span></div>
+            <div class="queue" id="dQueue">
+              <div class="q-item"><div class="q-time">10:00<small>выдача</small></div><div class="q-main"><div class="nm">Заказ №1042 · Азиза Р.</div><div class="ds">Человек-паук, Эльза · до 1 июня</div></div><span class="pill give">Готов</span><button class="q-act">Выдать</button></div>
+              <div class="q-item"><div class="q-time">11:30<small>возврат</small></div><div class="q-main"><div class="nm">Заказ №1038 · Д/с «Болажон»</div><div class="ds">8 костюмов снежинок · залог 400 000</div></div><span class="pill take">Приём</span><button class="q-act">Принять</button></div>
+              <div class="q-item"><div class="q-time">13:00<small>выдача</small></div><div class="q-main"><div class="nm">Заказ №1045 · Шохрух М.</div><div class="ds">Бэтмен, костюм тигра · доставка Yandex Go</div></div><span class="pill give">Сборка</span><button class="q-act">Открыть</button></div>
+              <div class="q-item"><div class="q-time">—<small>просрочка</small></div><div class="q-main"><div class="nm">Заказ №1031 · Камила Т.</div><div class="ds" style="color:var(--red)">Принцесса София · вернуть должны 28 мая</div></div><span class="pill over">+2 дня</span><button class="q-act">Связаться</button></div>
+              <div class="q-item"><div class="q-time">16:00<small>выдача</small></div><div class="q-main"><div class="nm">Заказ №1047 · Нигора А.</div><div class="ds">Костюм пчёлки, божья коровка · самовывоз</div></div><span class="pill give">Готов</span><button class="q-act">Выдать</button></div>
+            </div>
+          </div>
+          <div class="grid" style="gap:18px">
+            <div class="hero">
+              <button class="eye-btn" aria-label="Скрыть/показать суммы" aria-pressed="false"></button>
+              <div class="hero-hd">
+                <div class="cap"><svg width="15" height="15" fill="none" stroke="#D4DCF5" stroke-width="2" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/></svg>Заработано в августе</div>
+                <span class="delta" id="dEarnedDelta">↑ 18%</span>
+              </div>
+              <div class="hero-amt u mask" id="dEarned">1,8 млн</div>
+              <div class="hero-pills"><div class="hero-pill"><div class="k">Должны клиенты</div><div class="v mask" id="dDebt">680 тыс</div></div><div class="hero-pill"><div class="k">Залоги на руках</div><div class="v mask" id="dDeposits">2,1 млн</div></div></div>
+              <div class="hero-spark"><span style="height:42%"></span><span style="height:58%"></span><span style="height:50%"></span><span style="height:72%"></span><span style="height:64%"></span><span style="height:82%"></span><span style="height:74%"></span><span style="height:96%"></span></div>
+            </div>
+            <div class="card mini-stat">
+              <div class="cap">Загрузка склада</div>
+              <div class="gauge"><div class="gauge-ring"><svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="33" fill="none" stroke="var(--line)" stroke-width="10"/><circle id="dGaugeRing" cx="40" cy="40" r="33" fill="none" stroke="var(--green)" stroke-width="10" stroke-linecap="round" stroke-dasharray="207" stroke-dashoffset="66"/></svg><div class="gv" id="dGaugePct">68%</div></div><div class="gauge-meta"><div class="n" id="dGaugeText">Свободно 142 из 210</div><div class="l">единиц костюмов</div><div class="legend"><span><i style="background:var(--green)"></i>свободно</span><span id="dLegOut"><i style="background:var(--line-2)"></i>в прокате 61</span><span id="dLegRep"><i style="background:var(--gold)"></i>ремонт 7</span></div></div></div>
+            </div>
+            <div class="card mini-stat">
+              <div class="panel-h" style="padding:0 0 8px"><h3 style="font-size:14px">Ближайшие брони</h3></div>
+              <div id="dBookings">
+              <div class="book-item"><div class="date-chip"><div class="m">июн</div><div class="d">22</div></div><div><div class="nm">Выпускной · школа №64</div><div class="ds">12 костюмов · аренда 3 дня</div></div><div class="sum">1,8 млн</div></div>
+              <div class="book-item"><div class="date-chip"><div class="m">июн</div><div class="d">24</div></div><div><div class="nm">Утренник «Лето»</div><div class="ds">Д/с «Хумо» · 9 костюмов</div></div><div class="sum">920 тыс</div></div>
+              <div class="book-item"><div class="date-chip"><div class="m">июн</div><div class="d">28</div></div><div><div class="nm">День рождения · Алишер</div><div class="ds">Бэтмен + декор</div></div><div class="sum">240 тыс</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ORDERS -->
+      <section class="view" id="orders">
+        <div class="pc-orders-sticky">
+          <label class="search" style="width:100%;max-width:none"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input id="ordSearch" placeholder="Поиск по №, клиенту, костюму…"></label>
+        </div>
+
+        <div class="pipe" id="ordPipe" style="margin-top:16px">
+          <div class="stage" data-st="req"><div class="n">2</div><div class="l">Запросы</div><div class="bar" style="background:var(--line-2)"></div></div>
+          <div class="stage" data-st="book"><div class="n">5</div><div class="l">Брони</div><div class="bar" style="background:var(--gold)"></div></div>
+          <div class="stage" data-st="conf"><div class="n">3</div><div class="l">Ждёт сборки</div><div class="bar" style="background:var(--teal)"></div></div>
+          <div class="stage" data-st="build"><div class="n">4</div><div class="l">Собирают</div><div class="bar" style="background:var(--primary)"></div></div>
+          <div class="stage" data-st="out"><div class="n">6</div><div class="l">На руках</div><div class="bar" style="background:var(--green)"></div></div>
+          <div class="stage" data-st="over"><div class="n">1</div><div class="l">Просрочен</div><div class="bar" style="background:var(--red)"></div></div>
+          <div class="stage" data-st="closed"><div class="n">38</div><div class="l">Закрыты</div><div class="bar"></div></div>
+        </div>
+
+        <div class="grid" style="grid-template-columns:1fr 1.1fr;gap:18px;align-items:start;margin-top:18px">
+          <div class="card" style="padding:18px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+              <button id="pcCalPrev" style="width:30px;height:30px;border:none;background:var(--surface-2);border-radius:9px;font-size:17px;color:var(--ink-2);cursor:pointer">‹</button>
+              <h3 style="flex:1;text-align:center;margin:0;font-size:15px" id="pcCalTitle">Июнь 2026</h3>
+              <button id="pcCalNext" style="width:30px;height:30px;border:none;background:var(--surface-2);border-radius:9px;font-size:17px;color:var(--ink-2);cursor:pointer">›</button>
+              <button class="chip" id="pcCalToday" type="button">Сегодня</button>
+              <span class="lnk" onclick="go('cal')" style="margin-left:6px">Полный →</span>
+            </div>
+            <div id="ordMiniCal"></div>
+          </div>
+          <div class="card" style="padding:18px">
+            <div class="panel-h" style="padding:0 0 12px"><h3 id="ordNearTitle">Ближайшие активные</h3><span style="font-size:12.5px;color:var(--ink-3)" id="ordNearMeta"></span></div>
+            <div id="ordNearList"></div>
+          </div>
+        </div>
+
+        <div class="toolbar" style="margin-top:18px" id="ordToolbar">
+          <button class="chip on" data-f="all">Все</button><button class="chip" data-f="active">Активные</button><button class="chip" data-f="today">Сегодня</button><button class="chip" data-f="over">Просрочки</button><button class="chip" data-f="debt">С долгом</button>
+        </div>
+        <div class="card" style="overflow:hidden">
+          <table class="tbl"><thead><tr><th>Заказ</th><th>Клиент</th><th>Костюмы</th><th>Сроки</th><th>Сумма</th><th>Статус</th><th></th></tr></thead>
+            <tbody id="ordersBody"></tbody>
+          </table>
+          <div id="ordsEmpty" style="display:none" class="empty-state"><div class="empty-title">Ничего не найдено</div><div class="empty-sub">Смените фильтр или сбросьте поиск</div></div>
+        </div>
+      </section>
+
+      <!-- ORDER DETAIL -->
+      <section class="view" id="order">
+        <div class="grid od-grid">
+          <div class="grid" style="gap:18px">
+            <div class="card od-head">
+              <div class="od-banner"><div class="big" id="odArt"></div><div style="flex:1"><div class="nm" id="odTitle">Заказ №1045</div><div class="ds" id="odMeta">Шохрух Мирзаев · физлицо</div></div><span class="st" id="odStatus">Сборка</span></div>
+              <div id="odTl" style="margin-top:18px"></div>
+            </div>
+
+            <div class="card" style="padding:20px">
+              <div class="panel-h" style="padding:0 0 4px"><h3>Костюмы в заказе</h3><span id="odItemsMeta" style="font-size:12.5px;color:var(--ink-3)"></span></div>
+              <div id="odItems"></div>
+            </div>
+
+            <div class="card" style="padding:20px;display:none" id="odAssemblyCard">
+              <div class="panel-h" style="padding:0 0 12px"><h3>Сборка</h3><span id="odAssemblyStatus" style="font-size:12.5px;font-weight:700"></span></div>
+              <div id="odAssembly"></div>
+            </div>
+
+            <div class="card" style="padding:20px" id="odCheckCard">
+              <div class="panel-h" style="padding:0 0 10px"><h3>Чек-лист сборки</h3><span id="odCheckMeta" style="font-size:12.5px;color:var(--green);font-weight:600"></span></div>
+              <div id="odChecks"></div>
+              <div id="odAssembleBtnWrap" style="margin-top:14px"></div>
+            </div>
+
+            <div class="card" style="padding:20px">
+              <div class="panel-h" style="padding:0 0 8px"><h3>История заказа</h3></div>
+              <div id="odHist"></div>
+            </div>
+          </div>
+
+          <div class="grid" style="gap:18px">
+            <div class="card" style="padding:20px">
+              <div class="panel-h" style="padding:0 0 12px"><h3>Деньги</h3><span class="pay-badge" id="odPayBadge">✓ Оплачено</span></div>
+              <div id="odMoney"></div>
+              <div style="display:flex;gap:9px;margin-top:14px">
+                <div style="flex:1;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:11px 13px"><div style="font-size:11px;color:var(--ink-3)">Залог</div><div style="font-weight:700;font-size:15px" id="odDep">150 000</div></div>
+                <div style="flex:1;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:11px 13px"><div style="font-size:11px;color:var(--ink-3)">Способ</div><div style="font-weight:700;font-size:15px" id="odPay">Карта</div></div>
+              </div>
+            </div>
+
+            <div class="card" style="padding:20px">
+              <div class="panel-h" style="padding:0 0 12px"><h3>Адрес клиента</h3></div>
+              <div id="odDelBlock"></div>
+            </div>
+
+            <div class="card" style="padding:20px">
+              <div class="panel-h" style="padding:0 0 12px"><h3>Действия</h3></div>
+              <div class="od-actions" id="odActions"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- КЛИЕНТЫ -->
+      <section class="view" id="clients">
+        <div class="grid today-row" style="margin-bottom:18px">
+          <div class="card tile"><div class="tile-top"><div class="tile-ico" style="background:var(--surface-2);color:var(--ink-2)"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M17 20v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M10 10a3 3 0 100-6 3 3 0 000 6zM21 20v-2a4 4 0 00-3-3.87M16 4.13A4 4 0 0119 8"/></svg></div></div><div><div class="tile-num" id="clientsTileTotal">0</div><div class="tile-lbl">Клиентов в базе</div></div><div class="tile-sub" id="clientsTileTotalSub">—</div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-give"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M20 7L9 18l-5-5"/></svg></div></div><div><div class="tile-num" id="clientsTileActive" style="color:var(--green)">0</div><div class="tile-lbl">Активных в этом месяце</div></div><div class="tile-sub">сделали хотя бы один заказ</div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-pick"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div></div><div><div class="tile-num" id="clientsTileOrders">0</div><div class="tile-lbl">Заказов всего</div></div><div class="tile-sub">за всё время работы проката</div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-over"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9l-8 14A2 2 0 004 21h16a2 2 0 001.7-3l-8-14a2 2 0 00-3.4 0z"/></svg></div></div><div><div class="tile-num" id="clientsTileDebtors" style="color:var(--red)">0</div><div class="tile-lbl">Должников</div></div><div class="tile-sub" id="clientsTileDebtorsSub" style="color:var(--red)">нет задолженностей</div></div>
+        </div>
+        <div class="toolbar">
+          <button class="chip on cl-chip" data-cl="all">Все</button>
+          <button class="chip cl-chip" data-cl="person">Физлица</button>
+          <button class="chip cl-chip" data-cl="org">Организации</button>
+          <button class="chip cl-chip" data-cl="debt">Должники</button>
+          <div class="topbar-spacer"></div>
+          <button class="btn sm" id="pcAddClient"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Добавить клиента</button>
+        </div>
+        <div class="card" style="overflow:hidden">
+          <table class="tbl"><thead><tr><th>Клиент</th><th>Тип</th><th>Заказов</th><th>Последний</th><th>Потрачено всего</th><th>Долг</th><th></th></tr></thead>
+            <tbody id="clientsBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- НОВЫЙ ЗАКАЗ -->
+      <section class="view" id="new-order">
+        <div class="no-grid">
+          <div class="grid" style="gap:18px;align-content:start">
+            <div class="card no-card">
+              <div class="no-hd"><span class="no-n">1</span><h3>Клиент</h3></div>
+              <label class="no-srch"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input id="pnoClSearch" placeholder="Поиск по имени или телефону…" autocomplete="off"></label>
+              <div id="pnoClPicked" style="display:none;margin-top:10px"></div>
+              <div id="pnoClList" style="display:none;margin-top:8px"></div>
+              <div id="pnoAddrPick" style="display:none;margin-top:4px"></div>
+            </div>
+            <div class="card no-card">
+              <div class="no-hd"><span class="no-n">2</span><h3>Костюмы <span id="pnoItemsMeta" style="font-size:13px;color:var(--ink-3);font-weight:400;margin-left:6px"></span></h3></div>
+              <div id="pnoItemsList"></div>
+              <button class="no-add" id="pnoPickFromWh" style="background:none;border:none;width:100%;color:var(--primary);font-weight:600;padding:10px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13.5px;cursor:pointer"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24"><path d="M3 9l9-6 9 6v11a1 1 0 01-1 1H4a1 1 0 01-1-1V9zM9 21V12h6v9"/></svg>Выбрать со склада</button>
+            </div>
+            <div class="card no-card">
+              <div class="no-hd"><span class="no-n">3</span><h3>Даты аренды</h3></div>
+              <div style="display:flex;align-items:flex-end;gap:12px">
+                <div style="flex:1"><div class="no-lbl">Выдача</div><input class="no-inp w100" id="pnoFrom" type="date"></div>
+                <svg style="margin-bottom:10px;color:var(--ink-3);flex:none" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                <div style="flex:1"><div class="no-lbl">Возврат</div><input class="no-inp w100" id="pnoTo" type="date"></div>
+                <div class="no-days" id="pnoDays">1 день</div>
+              </div>
+              <div class="pay-row" id="pnoSlot" style="margin-top:14px">
+                <button class="pay-opt active" data-slot="am" type="button">Утро</button>
+                <button class="pay-opt" data-slot="pm" type="button">После 12</button>
+              </div>
+            </div>
+          </div>
+          <div class="grid" style="gap:18px;align-content:start">
+            <div class="card no-card">
+              <div class="no-hd"><span class="no-n">4</span><h3>Оплата</h3></div>
+              <div class="pay-row" id="pnoPay">
+                <button class="pay-opt active" data-pay="Карта" type="button"><div class="pay-emo">💳</div>Карта</button>
+                <button class="pay-opt" data-pay="Наличные" type="button"><div class="pay-emo">💵</div>Нал</button>
+                <button class="pay-opt" data-pay="Перевод" type="button"><div class="pay-emo">📱</div>Перевод</button>
+              </div>
+              <div style="margin-top:14px"><div class="no-lbl">Залог (по желанию)</div><div style="display:flex;align-items:center;gap:8px"><input class="no-inp" id="pnoDep" style="flex:1" type="text" inputmode="numeric" placeholder="0"><span style="font-size:13px;color:var(--ink-3)">сум</span></div></div>
+            </div>
+            <div class="no-dark" id="pnoSummary"></div>
+            <button class="btn" id="pnoCreate" style="width:100%;justify-content:center;padding:16px;font-size:15px"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M20 7L9 18l-5-5"/></svg>Создать заказ</button>
+            <button class="btn ghost" style="width:100%;justify-content:center" onclick="go('orders')">Отмена</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ДЕНЬГИ -->
+      <section class="view" id="money">
+        <div class="grid today-row" style="margin-bottom:18px">
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-give"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div></div><div><div class="tile-num" id="moneyTileIncome" style="color:var(--primary)">0</div><div class="tile-lbl" id="moneyTileIncomeLbl">Доход в этом месяце</div></div><div class="tile-sub" id="moneyTileIncomeSub">—</div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-over"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></div></div><div><div class="tile-num" id="moneyTileExpense" style="color:var(--red)">0</div><div class="tile-lbl">Расходы</div></div><div class="tile-sub" id="moneyTileExpenseSub">за этот месяц</div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-pick"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M20 7L9 18l-5-5"/></svg></div></div><div><div class="tile-num" id="moneyTileProfit" style="color:var(--green)">0</div><div class="tile-lbl">Чистая прибыль</div></div><div class="tile-sub" id="moneyTileProfitSub">—</div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-take"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M3 10h11M9 21V3M14 7l3 3-3 3"/></svg></div></div><div><div class="tile-num" id="moneyTileDeposits">0</div><div class="tile-lbl">Залоги на руках</div></div><div class="tile-sub" id="moneyTileDepositsSub">—</div></div>
+        </div>
+        <div class="grid" style="grid-template-columns:1.45fr 1fr;gap:18px;align-items:start">
+          <div class="grid" style="gap:18px">
+            <div class="card" style="padding:22px">
+              <div class="panel-h" style="padding:0 0 20px"><h3>Доходы по месяцам</h3><span class="lnk">Подробнее →</span></div>
+              <div class="money-bars" id="moneyBars">
+                <div class="m-bar"><div class="m-bar-val">6,2</div><div class="m-bar-fill" style="height:50%"></div><div class="m-bar-lbl">Янв</div></div>
+                <div class="m-bar"><div class="m-bar-val">7,8</div><div class="m-bar-fill" style="height:63%"></div><div class="m-bar-lbl">Фев</div></div>
+                <div class="m-bar"><div class="m-bar-val">9,1</div><div class="m-bar-fill" style="height:73%"></div><div class="m-bar-lbl">Мар</div></div>
+                <div class="m-bar"><div class="m-bar-val">10,4</div><div class="m-bar-fill" style="height:84%"></div><div class="m-bar-lbl">Апр</div></div>
+                <div class="m-bar"><div class="m-bar-val">11,2</div><div class="m-bar-fill" style="height:90%"></div><div class="m-bar-lbl">Май</div></div>
+                <div class="m-bar cur"><div class="m-bar-val cur">12,4</div><div class="m-bar-fill" style="height:100%"></div><div class="m-bar-lbl cur">Июн</div></div>
+              </div>
+              <div class="m-axis"></div>
+            </div>
+            <div class="card" style="padding:20px">
+              <div class="panel-h" style="padding:0 0 14px"><h3>Последние платежи</h3></div>
+              <div id="moneyTxns">
+              <div class="txn"><div class="txn-ic in">↓</div><div class="txn-main"><div class="nm">Шохрух М. · Заказ №1045</div><div class="ds">20 июн · Оплата картой</div></div><div class="txn-amt in">+310 000</div></div>
+              <div class="txn"><div class="txn-ic in">↓</div><div class="txn-main"><div class="nm">Нигора А. · Заказ №1047</div><div class="ds">20 июн · Наличные</div></div><div class="txn-amt in">+240 000</div></div>
+              <div class="txn"><div class="txn-ic in">↓</div><div class="txn-main"><div class="nm">Д/с «Болажон» · Заказ №1038</div><div class="ds">17 июн · Перевод</div></div><div class="txn-amt in">+1 120 000</div></div>
+              <div class="txn"><div class="txn-ic out">↑</div><div class="txn-main"><div class="nm">Yandex Go · Доставка</div><div class="ds">20 июн · Корпоративный счёт</div></div><div class="txn-amt out">−28 000</div></div>
+              <div class="txn"><div class="txn-ic in">↓</div><div class="txn-main"><div class="nm">Камила Т. · залог №1031</div><div class="ds">18 июн · Наличные</div></div><div class="txn-amt in">+150 000</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="grid" style="gap:18px">
+            <div class="card" style="padding:20px">
+              <div class="panel-h" style="padding:0 0 14px"><h3>Источники дохода</h3></div>
+              <div id="moneyIncomeCats">
+              <div class="cat-row"><span class="cat-dot" style="background:var(--green)"></span><span class="cat-nm">Прокат костюмов</span><div class="cat-bar-bg"><div class="cat-bar-fill" style="width:87%;background:var(--green)"></div></div><span class="cat-pct">87%</span><span class="cat-val">10,8 млн</span></div>
+              <div class="cat-row"><span class="cat-dot" style="background:var(--teal)"></span><span class="cat-nm">Доставка</span><div class="cat-bar-bg"><div class="cat-bar-fill" style="width:8%;background:var(--teal)"></div></div><span class="cat-pct">8%</span><span class="cat-val">980 тыс</span></div>
+              <div class="cat-row"><span class="cat-dot" style="background:var(--line-2)"></span><span class="cat-nm">Прочее</span><div class="cat-bar-bg"><div class="cat-bar-fill" style="width:5%;background:var(--line-2)"></div></div><span class="cat-pct">5%</span><span class="cat-val">620 тыс</span></div>
+              </div>
+            </div>
+            <div class="card" style="padding:20px">
+              <div class="panel-h" style="padding:0 0 14px"><h3>Статьи расходов</h3></div>
+              <div id="moneyExpenseCats">
+              <div class="cat-row"><span class="cat-dot" style="background:var(--red)"></span><span class="cat-nm">Зарплата</span><div class="cat-bar-bg"><div class="cat-bar-fill" style="width:56%;background:var(--red)"></div></div><span class="cat-pct">56%</span><span class="cat-val">1,8 млн</span></div>
+              <div class="cat-row"><span class="cat-dot" style="background:var(--gold)"></span><span class="cat-nm">Аренда помещения</span><div class="cat-bar-bg"><div class="cat-bar-fill" style="width:25%;background:var(--gold)"></div></div><span class="cat-pct">25%</span><span class="cat-val">800 тыс</span></div>
+              <div class="cat-row"><span class="cat-dot" style="background:var(--teal)"></span><span class="cat-nm">Расходники</span><div class="cat-bar-bg"><div class="cat-bar-fill" style="width:13%;background:var(--teal)"></div></div><span class="cat-pct">13%</span><span class="cat-val">400 тыс</span></div>
+              <div class="cat-row"><span class="cat-dot" style="background:var(--ink-3)"></span><span class="cat-nm">Ремонт</span><div class="cat-bar-bg"><div class="cat-bar-fill" style="width:6%;background:var(--ink-3)"></div></div><span class="cat-pct">6%</span><span class="cat-val">200 тыс</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- МОИ ЗАКАЗЫ (очередь сборки) -->
+      <section class="view" id="mine">
+        <div class="card" style="padding:16px">
+          <div class="panel-h" style="padding:0 0 10px"><h3>Очередь сборки</h3><span id="myQueueMeta" style="font-size:12.5px;color:var(--ink-3)"></span></div>
+          <div id="myQueueList"></div>
+        </div>
+      </section>
+
+      <!-- ЖУРНАЛ (аудит, только владелец) -->
+      <section class="view" id="audit">
+        <div class="card" style="padding:16px">
+          <div class="panel-h" style="padding:0 0 10px"><h3>Журнал действий</h3><span id="auditMeta" style="font-size:12.5px;color:var(--ink-3)"></span></div>
+          <div id="auditList"></div>
+        </div>
+      </section>
+
+      <!-- СКЛАД -->
+      <section class="view" id="wh">
+        <div class="grid today-row" style="margin-bottom:18px">
+          <div class="card tile"><div class="tile-top"><div class="tile-ico" style="background:var(--surface-2);color:var(--ink-2)"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M3 9l9-6 9 6v11a1 1 0 01-1 1H4a1 1 0 01-1-1V9zM9 21V12h6v9"/></svg></div></div><div><div class="tile-num" id="whTileTotal">0</div><div class="tile-lbl">Костюмов в базе</div></div><div class="tile-sub" id="whTileTotalSub">0 единиц</div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-give"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M20 7L9 18l-5-5"/></svg></div></div><div><div class="tile-num" id="whTileAvail" style="color:var(--green)">0</div><div class="tile-lbl">Свободно</div></div><div class="tile-sub" id="whTileAvailSub">0 единиц готовы к выдаче</div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-pick"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div></div><div><div class="tile-num" id="whTileOut">0</div><div class="tile-lbl">На прокате</div></div><div class="tile-sub" id="whTileOutSub">0 единиц у клиентов</div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-take"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9l-8 14A2 2 0 004 21h16a2 2 0 001.7-3l-8-14a2 2 0 00-3.4 0z"/></svg></div></div><div><div class="tile-num" id="whTileRep" style="color:var(--gold)">0</div><div class="tile-lbl">В ремонте</div></div><div class="tile-sub" id="whTileRepSub">0 единиц на восстановлении</div></div>
+        </div>
+        <div class="toolbar">
+          <button class="chip on wh-chip" data-wh="all">Все</button>
+          <button class="chip wh-chip" data-wh="avail">В наличии</button>
+          <button class="chip wh-chip" data-wh="out">На прокате</button>
+          <button class="chip wh-chip" data-wh="rep">Ремонт</button>
+          <div class="topbar-spacer"></div>
+          <button class="btn ghost sm" id="pcWhRooms" type="button">Комнаты</button>
+          <button class="btn sm" id="pcAddCostume"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Добавить костюм</button>
+        </div>
+        <div class="wh-grid" id="whGrid"></div>
+      </section>
+
+      <!-- КОМНАТЫ -->
+      <section class="view" id="rooms">
+        <div id="pcRoomsRoot"></div>
+      </section>
+
+      <!-- КАРТОЧКА КОСТЮМА -->
+      <section class="view" id="costume">
+        <div class="card prf-head">
+          <div class="cst-art" id="cstArt"></div>
+          <div style="flex:1">
+            <div class="prf-nm" id="cstName">—</div>
+            <div class="prf-rl"><span class="wh-av" id="cstStatus">—</span> · <span id="cstSizes">размеры —</span></div>
+            <div class="prf-meta" id="cstPrice">— сум/день</div>
+          </div>
+          <button class="btn ghost" id="cstEdit">✎ Редактировать</button>
+        </div>
+        <div id="cstPhotos" class="photo-strip" style="margin-top:12px"></div>
+
+        <div class="grid today-row" style="margin:18px 0">
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-give"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M20 7L9 18l-5-5"/></svg></div></div><div><div class="tile-num" id="cstAvail" style="color:var(--green)">0</div><div class="tile-lbl">Свободно</div></div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-pick"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div></div><div><div class="tile-num" id="cstOut">0</div><div class="tile-lbl">На прокате</div></div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico" style="background:var(--surface-2);color:var(--ink-2)"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M3 9l9-6 9 6v11a1 1 0 01-1 1H4a1 1 0 01-1-1V9zM9 21V12h6v9"/></svg></div></div><div><div class="tile-num" id="cstTotal">0</div><div class="tile-lbl">Всего единиц</div></div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-take"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div></div><div><div class="tile-num" id="cstRevenue" style="color:var(--primary)">0</div><div class="tile-lbl">Заработано всего</div></div></div>
+        </div>
+
+        <div class="grid" style="grid-template-columns:1.3fr 1fr;gap:18px;align-items:start">
+          <div class="grid" style="gap:18px">
+            <div class="card" style="padding:22px">
+              <div class="panel-h" style="padding:0 0 14px"><h3>Характеристики</h3></div>
+              <div id="cstFields"></div>
+            </div>
+            <div class="card" style="padding:22px">
+              <div class="panel-h" style="padding:0 0 14px"><h3>История заказов</h3><span class="lnk" id="cstAllOrders">Все заказы →</span></div>
+              <div id="cstHistory"></div>
+            </div>
+          </div>
+
+          <div class="grid" style="gap:18px">
+            <div class="card" style="padding:22px" id="cstNoteCard">
+              <div class="panel-h" style="padding:0 0 10px"><h3>Описание</h3></div>
+              <div id="cstNote" style="font-size:13.5px;color:var(--ink-2);line-height:1.5">—</div>
+            </div>
+            <button class="btn" id="cstNewOrder" style="width:100%;justify-content:center"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Создать заказ с этим костюмом</button>
+            <button class="btn ghost" id="cstDelete" style="width:100%;justify-content:center;color:var(--red)">Удалить из склада</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TELEGRAM-БОТ -->
+      <section class="view" id="tg">
+        <div class="tg-bar" data-tg-real>
+          <span class="tg-pill" id="tgConnectedPill"><span class="tg-dot"></span>Бот не подключён</span>
+          <span class="tg-handle" id="tgBotHandle">—</span>
+          <div class="topbar-spacer"></div>
+          <button class="btn sm">Настроить бота</button>
+        </div>
+        <div id="tgDemoBadge" style="display:none;padding:14px 18px;background:var(--gold-soft);border:1px solid #F0D18A;border-radius:14px;margin-bottom:18px;font-size:13.5px;color:var(--gold);line-height:1.5">
+          🚧 <b>Раздел в разработке.</b> Ниже показан макет интерфейса будущей интеграции с Telegram-ботом. Реальные сообщения и статистика появятся после подключения бота через раздел «Настройки → Интеграции».
+        </div>
+        <div class="grid today-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px" data-tg-real>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico" style="background:var(--teal-soft);color:var(--teal)"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M22 3L2 10.5l6 2.5m14-10l-3 17-6-5m9-12L8.5 16M8 13v5l3-2.5"/></svg></div></div><div><div class="tile-num">0</div><div class="tile-lbl">Запросов сегодня</div></div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-give"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M20 7L9 18l-5-5"/></svg></div></div><div><div class="tile-num" style="color:var(--green)">0</div><div class="tile-lbl">Конвертировано</div></div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-over"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9l-8 14A2 2 0 004 21h16a2 2 0 001.7-3l-8-14a2 2 0 00-3.4 0z"/></svg></div></div><div><div class="tile-num" style="color:var(--gold)">0</div><div class="tile-lbl">Ожидает ответа</div></div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico" style="background:var(--surface-2);color:var(--ink-2)"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div></div><div><div class="tile-num">—</div><div class="tile-lbl">Среднее время</div></div></div>
+        </div>
+        <div class="grid tg-layout">
+          <div class="card" style="padding:0"><div class="panel-h" style="padding:18px 20px 14px"><h3>Входящие сообщения</h3></div><div style="padding:0 20px 4px" id="tgConvs"></div></div>
+          <div class="grid" style="gap:14px;align-content:start">
+            <div class="card" style="padding:0"><div class="panel-h" style="padding:14px 16px 10px"><h3 style="font-size:13.5px">Быстрые ответы</h3></div><div style="padding:0 16px 14px" id="tgTpls"></div></div>
+            <div class="card" style="padding:0"><div class="panel-h" style="padding:14px 16px 10px"><h3 style="font-size:13.5px">Настройки бота</h3></div><div style="padding:0 16px 14px" id="tgBotSet"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- КОМАНДА -->
+      <section class="view" id="team">
+        <div class="grid today-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px">
+          <div class="card tile"><div class="tile-top"><div class="tile-ico" style="background:var(--mint-soft);color:var(--primary)"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></div></div><div><div class="tile-num" id="teamCount">—</div><div class="tile-lbl">Сотрудника</div></div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-give"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M20 7L9 18l-5-5"/></svg></div></div><div><div class="tile-num" id="teamOnlineCount" style="color:var(--green)">—</div><div class="tile-lbl">Онлайн сейчас</div></div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-pick"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/></svg></div></div><div><div class="tile-num" id="teamOrdersCount">—</div><div class="tile-lbl">Заказов за месяц</div></div></div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
+          <div class="panel-h" style="padding:18px 20px"><h3>Сотрудники</h3><button class="btn sm" id="pcAddTeam">+ Пригласить</button></div>
+          <table class="tbl"><thead><tr><th>Сотрудник</th><th>Email</th><th>Роль</th><th>Статус</th><th>Заказов</th><th></th></tr></thead><tbody id="teamBody"></tbody></table>
+        </div>
+        <div class="card" style="padding:20px">
+          <div class="panel-h" style="padding:0 0 14px"><h3>Права доступа</h3></div>
+          <div id="permGrid"></div>
+        </div>
+      </section>
+
+      <!-- НАСТРОЙКИ -->
+      <section class="view" id="settings">
+        <div class="set-layout">
+          <div class="card set-nav">
+            <div class="set-nav-lbl">Основное</div>
+            <button class="set-nav-item active" data-panel="shop">Прокат</button>
+            <button class="set-nav-item" data-panel="price">Ценообразование</button>
+            <button class="set-nav-item" data-panel="notif">Уведомления</button>
+            <div class="set-nav-lbl" style="margin-top:8px">Системное</div>
+            <button class="set-nav-item" data-panel="int">Интеграции</button>
+            <button class="set-nav-item" data-panel="sec">Безопасность</button>
+          </div>
+          <div id="setContent"></div>
+        </div>
+      </section>
+
+      <!-- КАЛЕНДАРЬ -->
+      <section class="view" id="cal">
+        <div class="cal-hd">
+          <button class="cal-nav">‹</button>
+          <h3 class="cal-mname">Июнь 2026</h3>
+          <button class="cal-nav">›</button>
+          <div class="topbar-spacer"></div>
+          <button class="chip on">Месяц</button>
+          <button class="chip">Неделя</button>
+        </div>
+        <div class="cal-layout">
+          <div class="card cal-board" id="calGrid"></div>
+          <div class="card cal-side" id="calSide"><div class="cal-empty">Выберите день</div></div>
+        </div>
+      </section>
+
+      <!-- КАРТОЧКА КЛИЕНТА -->
+      <section class="view" id="client">
+        <div class="card prf-head">
+          <div class="prf-av" id="clAv" style="background:linear-gradient(135deg,#D4DCF5,#8BA0D4)">?</div>
+          <div style="flex:1">
+            <div class="prf-nm" id="clName">—</div>
+            <div class="prf-rl"><span class="badge" id="clType">—</span> · <span id="clSince">с —</span></div>
+            <div class="prf-meta" id="clContact">—</div>
+          </div>
+          <button class="btn ghost" id="clEdit">✎ Редактировать</button>
+        </div>
+
+        <div class="grid today-row" style="margin:18px 0">
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-give"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><path d="M9 5a2 2 0 002 2h2a2 2 0 002-2"/></svg></div></div><div><div class="tile-num" id="clTotalOrd">0</div><div class="tile-lbl">Заказов всего</div></div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-pick"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div></div><div><div class="tile-num" id="clTotalSum" style="color:var(--primary)">0</div><div class="tile-lbl">Потрачено всего</div></div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-take"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div></div><div><div class="tile-num" id="clLast">—</div><div class="tile-lbl">Последний заказ</div></div></div>
+          <div class="card tile" id="clDebtTile"><div class="tile-top"><div class="tile-ico ic-over"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9l-8 14A2 2 0 004 21h16a2 2 0 001.7-3l-8-14a2 2 0 00-3.4 0z"/></svg></div></div><div><div class="tile-num" id="clDebt" style="color:var(--red)">—</div><div class="tile-lbl">Задолженность</div></div></div>
+        </div>
+
+        <div class="grid" style="grid-template-columns:1.3fr 1fr;gap:18px;align-items:start">
+          <div class="grid" style="gap:18px">
+            <div class="card" style="padding:22px">
+              <div class="panel-h" style="padding:0 0 14px"><h3>Контактная информация</h3></div>
+              <div id="clFields"></div>
+            </div>
+            <div class="card" style="padding:22px" id="clLastOrderCard">
+              <div class="panel-h" style="padding:0 0 14px"><h3>Последний заказ</h3><span class="lnk" id="clAllOrders">Все заказы клиента →</span></div>
+              <div id="clLastOrder"></div>
+            </div>
+          </div>
+
+          <div class="grid" style="gap:18px">
+            <div class="card" style="padding:22px" id="clNoteCard">
+              <div class="panel-h" style="padding:0 0 10px"><h3>Заметка</h3></div>
+              <div id="clNote" style="font-size:13.5px;color:var(--ink-2);line-height:1.5">—</div>
+            </div>
+            <div class="card" style="padding:22px">
+              <div class="panel-h" style="padding:0 0 14px"><h3>История заказов</h3></div>
+              <div id="clHistory"></div>
+            </div>
+            <button class="btn ghost" id="clNewOrder" style="width:100%;justify-content:center"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Создать заказ для клиента</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ПРОФИЛЬ -->
+      <section class="view" id="profile">
+        <div class="card prf-head">
+          <div class="prf-av" id="prfAv" style="background:linear-gradient(135deg,#D4DCF5,#8BA0D4)">?</div>
+          <div style="flex:1">
+            <div class="prf-nm" id="prfName">—</div>
+            <div class="prf-rl"><span class="st build" id="prfRole">Владелец проката</span> · <span id="prfSince">—</span></div>
+            <div class="prf-meta" id="prfContact">—</div>
+          </div>
+          <button class="btn ghost" id="prfEdit">✎ Редактировать</button>
+        </div>
+
+        <div class="grid today-row" style="margin:18px 0">
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-give"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><path d="M9 5a2 2 0 002 2h2a2 2 0 002-2"/></svg></div></div><div><div class="tile-num" id="prfTileOrders">0</div><div class="tile-lbl">Заказов лично</div></div><div class="tile-sub" id="prfTileOrdersSub">за всё время работы</div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-pick"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div></div><div><div class="tile-num" id="prfTileRevenue" style="color:var(--primary)">0</div><div class="tile-lbl">Принесено выручки</div></div><div class="tile-sub" id="prfTileRevenueSub">—</div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico ic-take"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"/></svg></div></div><div><div class="tile-num" id="prfTileClients">0</div><div class="tile-lbl">Клиентов в базе</div></div><div class="tile-sub" id="prfTileClientsSub">—</div></div>
+          <div class="card tile"><div class="tile-top"><div class="tile-ico" style="background:var(--surface-2);color:var(--ink-2)"><svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div></div><div><div class="tile-num" id="prfTileDays">0</div><div class="tile-lbl">Дней с прокатом</div></div><div class="tile-sub" id="prfTileDaysSub">—</div></div>
+        </div>
+
+        <div class="grid" style="grid-template-columns:1.3fr 1fr;gap:18px;align-items:start">
+          <div class="grid" style="gap:18px">
+            <div class="card" style="padding:22px">
+              <div class="panel-h" style="padding:0 0 14px"><h3>Личные данные</h3><button class="btn ghost sm" id="prfEditData">Изменить</button></div>
+              <div class="prf-field"><span class="k">Имя</span><span class="v" id="prfDataName">—</span></div>
+              <div class="prf-field"><span class="k">Email</span><span class="v" id="prfDataEmail">—</span></div>
+              <div class="prf-field"><span class="k">Телефон</span><span class="v" id="prfDataPhone">—</span></div>
+              <div class="prf-field"><span class="k">Telegram</span><span class="v" id="prfDataTg">—</span></div>
+              <div class="prf-field"><span class="k">День рождения</span><span class="v" id="prfDataBd">—</span></div>
+              <div class="prf-field"><span class="k">Адрес</span><span class="v" id="prfDataAddr">—</span></div>
+            </div>
+
+            <div class="card" style="padding:22px">
+              <div class="panel-h" style="padding:0 0 14px"><h3>Активность за месяц</h3></div>
+              <div class="prf-act" id="prfActList">
+                <div style="text-align:center;padding:20px;color:var(--ink-3);font-size:13px">Пока нет активности</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid" style="gap:18px">
+            <div class="card" style="padding:22px">
+              <div class="panel-h" style="padding:0 0 14px"><h3>Безопасность</h3></div>
+              <div class="prf-sec-row"><div><div class="lbl">Пароль</div><div class="sub" id="prfPwdSub">—</div></div><button class="btn ghost sm" id="prfChangePwd">Сменить</button></div>
+              <div class="prf-sec-row"><div><div class="lbl">Сессии на устройствах</div><div class="sub">завершить вход везде, кроме этого</div></div><button class="btn ghost sm" id="prfLogoutAll">Выйти везде</button></div>
+              <div class="prf-sec-row" style="opacity:.6"><div><div class="lbl">Двухфакторная аутентификация</div><div class="sub">в разработке</div></div><div class="toggle off"></div></div>
+              <div class="prf-sec-row" style="opacity:.6"><div><div class="lbl">Пин-код при входе</div><div class="sub">в разработке</div></div><div class="toggle off"></div></div>
+            </div>
+
+            <div class="card" style="padding:22px">
+              <div class="panel-h" style="padding:0 0 14px"><h3>Предпочтения</h3></div>
+              <div class="prf-sec-row"><div><div class="lbl">Тема</div><div class="sub">Светлая</div></div><button class="btn ghost sm">Сменить</button></div>
+              <div class="prf-sec-row"><div><div class="lbl">Язык</div><div class="sub">Русский</div></div><button class="btn ghost sm">Сменить</button></div>
+              <div class="prf-sec-row"><div><div class="lbl">Уведомления на e-mail</div><div class="sub">ежедневный отчёт</div></div><div class="toggle"></div></div>
+            </div>
+
+            <button class="btn ghost" id="prfLogout" style="width:100%;justify-content:center;color:var(--red);border-color:#f0c9c4;background:var(--red-soft)">↶ Выйти из аккаунта</button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script src="/js/api.js?v=55"></script>
+<script src="/js/util.js?v=59"></script>
+<script src="/js/art.js?v=50"></script>
+<script src="/js/pc.js?v=91"></script>
+<script src="/js/ui.js?v=40"></script>
+</body>
+</html>

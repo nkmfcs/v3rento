@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Вход — Rento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   Самодостаточная страница входа — не зависит от внешних CSS.
+   ============================================================ */
+:root{
+  --bg:#EEF1F7;
+  --surface:#FFFFFF;
+  --surface-2:#F3F5FA;
+  --ink:#10162A;
+  --ink-2:#4A5570;
+  --ink-3:#8B93A8;
+  --line:#E2E6F0;
+  --line-2:#CDD4E4;
+  --primary:#2A56C6;
+  --primary-deep:#1C3F9A;
+  --green:#2B63D9;
+  --mint-soft:#EEF2FA;
+  --green-soft:#E4EAF8;
+  --red:#CB554A;
+  --red-soft:#F8E5E2;
+  --shadow:0 1px 2px rgba(16,22,42,.05),0 14px 30px -18px rgba(16,22,42,.16);
+  --shadow-lg:0 34px 64px -30px rgba(16,22,42,.34);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:'Onest',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  background:
+    radial-gradient(900px 480px at 92% -12%,rgba(80,130,220,.22),transparent 55%),
+    radial-gradient(720px 600px at -6% 105%,rgba(42,86,198,.14),transparent 55%),
+    var(--bg);
+  padding:20px;
+}
+.u{font-family:'Unbounded','Onest',sans-serif;letter-spacing:-.015em}
+
+.login-card{
+  width:100%;
+  max-width:400px;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:24px;
+  box-shadow:var(--shadow-lg);
+  padding:36px 32px 28px;
+}
+.brand{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin-bottom:30px;
+}
+.brand-mark{
+  width:48px;height:48px;border-radius:15px;
+  background:linear-gradient(145deg,#D4DCF5,#8BA0D4);
+  display:grid;place-items:center;font-size:26px;
+  flex:none;
+  box-shadow:0 8px 16px -8px rgba(42,86,198,.4);
+}
+.brand-name{font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-.015em}
+.brand-sub{font-size:12.5px;color:var(--ink-3);margin-top:1px}
+
+h1{font-size:24px;font-weight:700;color:var(--ink);margin-bottom:8px;letter-spacing:-.01em}
+.lead{font-size:14px;color:var(--ink-3);margin-bottom:26px;line-height:1.5}
+
+form{display:flex;flex-direction:column;gap:16px}
+.field{display:flex;flex-direction:column;gap:7px}
+label{
+  font-size:11px;
+  font-weight:700;
+  color:var(--ink-3);
+  text-transform:uppercase;
+  letter-spacing:.07em;
+}
+input{
+  background:var(--surface-2);
+  border:1.5px solid var(--line);
+  border-radius:13px;
+  padding:14px 15px;
+  font-family:inherit;
+  font-size:15px;
+  color:var(--ink);
+  outline:none;
+  transition:all .14s;
+  width:100%;
+}
+input:focus{
+  border-color:var(--primary);
+  background:var(--surface);
+  box-shadow:0 0 0 3px var(--mint-soft);
+}
+input:hover:not(:focus){
+  border-color:var(--line-2);
+}
+
+.btn{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  background:var(--primary);
+  color:#fff;
+  font-family:inherit;
+  font-weight:600;
+  font-size:15px;
+  padding:15px;
+  border-radius:14px;
+  border:none;
+  cursor:pointer;
+  margin-top:8px;
+  box-shadow:0 14px 28px -14px rgba(30,107,78,.7);
+  transition:all .15s;
+}
+.btn:hover:not(:disabled){
+  background:var(--primary-deep);
+  transform:translateY(-1px);
+  box-shadow:0 18px 32px -14px rgba(30,107,78,.8);
+}
+.btn:active:not(:disabled){
+  transform:translateY(0);
+}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+
+.or-row{display:flex;align-items:center;gap:12px;margin:18px 0 14px;color:var(--ink-3);font-size:12px}
+.or-row span{flex:1;height:1px;background:var(--line)}
+.ghost-btn{
+  display:block;width:100%;text-align:center;
+  background:var(--surface-2);color:var(--primary);
+  font-family:inherit;font-weight:600;font-size:14.5px;
+  padding:14px;border:1.5px solid var(--line-2);border-radius:14px;cursor:pointer;
+  transition:all .14s;
+}
+.ghost-btn:hover{border-color:var(--primary);background:var(--mint-soft)}
+.lead-hint{margin-top:10px;font-size:12px;color:var(--ink-3);text-align:center;line-height:1.5}
+.opt{color:var(--ink-3);font-weight:400;text-transform:none;letter-spacing:0}
+
+.lead-bg{
+  position:fixed;inset:0;z-index:50;
+  background:rgba(15,42,34,.42);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+  display:grid;place-items:center;padding:18px;
+}
+.lead-bg[hidden]{display:none}
+.lead-card{
+  width:100%;max-width:400px;background:var(--surface);
+  border:1px solid var(--line);border-radius:22px;
+  box-shadow:var(--shadow-lg);padding:28px 26px 24px;position:relative;
+  animation:leadIn .18s ease;
+}
+@keyframes leadIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.lead-close{
+  position:absolute;top:12px;right:16px;border:none;background:none;
+  font-size:26px;line-height:1;color:var(--ink-3);cursor:pointer;
+}
+.lead-card h2{font-size:20px;font-weight:700;margin-bottom:6px;color:var(--ink)}
+.lead-sub{font-size:13px;color:var(--ink-3);margin-bottom:18px;line-height:1.5}
+.lead-done{text-align:center;padding:10px 0}
+.lead-done[hidden]{display:none}
+.lead-done-ico{
+  width:56px;height:56px;border-radius:50%;background:var(--green-soft);
+  color:var(--green);font-size:30px;display:grid;place-items:center;margin:0 auto 16px;
+}
+
+.error{
+  background:var(--red-soft);
+  border:1px solid #f0c9c4;
+  color:var(--red);
+  font-size:13px;
+  padding:12px 14px;
+  border-radius:11px;
+  line-height:1.4;
+  display:none;
+}
+.error.show{display:block;animation:shake .3s}
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  25%{transform:translateX(-4px)}
+  75%{transform:translateX(4px)}
+}
+
+.hint{
+  margin-top:18px;
+  font-size:12.5px;
+  color:var(--ink-3);
+  text-align:center;
+  line-height:1.5;
+  background:var(--surface-2);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:12px 14px;
+}
+.hint code{
+  background:var(--mint-soft);
+  color:var(--green);
+  padding:2px 8px;
+  border-radius:6px;
+  font-family:'SF Mono','Monaco','Consolas',monospace;
+  font-size:12px;
+  font-weight:600;
+}
+.demo-box{
+  margin:18px 0 4px;
+  padding:12px 14px;
+  background:var(--surface-2);
+  border:1px solid var(--line);
+  border-radius:14px;
+}
+.demo-box h3{
+  font-size:11px;font-weight:700;color:var(--ink-3);
+  text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;
+}
+.demo-row{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  font-size:13px;padding:5px 0;color:var(--ink-2);
+}
+.demo-row button{
+  border:0;background:var(--mint-soft);color:var(--primary);
+  font:inherit;font-size:12px;font-weight:600;
+  padding:5px 10px;border-radius:8px;cursor:pointer;
+}
+.demo-row button:hover{background:var(--green-soft)}
+
+@media (max-width:420px){
+  .login-card{padding:28px 22px 22px;border-radius:20px}
+  h1{font-size:21px}
+  .brand-mark{width:42px;height:42px;font-size:22px}
+}
+</style>
+</head>
+<body>
+<main class="login-card">
+  <div class="brand">
+    <div class="brand-mark">🎭</div>
+    <div>
+      <div class="brand-name u">Rento</div>
+      <div class="brand-sub">костюмерная</div>
+    </div>
+  </div>
+
+  <h1>Войти в систему</h1>
+  <p class="lead">Введите логин и пароль владельца, менеджера или сотрудника.</p>
+
+  <form id="loginForm" autocomplete="on" novalidate>
+    <div class="error" id="err" role="alert"></div>
+    <div class="field">
+      <label for="login">Логин</label>
+      <input id="login" name="login" type="text" required autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="40">
+    </div>
+    <div class="field">
+      <label for="password">Пароль</label>
+      <input id="password" name="password" type="password" required autocomplete="current-password" maxlength="200">
+    </div>
+    <button class="btn" type="submit" id="submitBtn">Войти</button>
+  </form>
+
+  <div class="demo-box">
+    <h3>Вход</h3>
+    <div class="demo-row"><span>Владелец · <code>admin</code></span><button type="button" data-fill="admin:admin12345">подставить</button></div>
+  </div>
+
+  <div class="or-row"><span></span>или<span></span></div>
+  <button class="ghost-btn" type="button" id="leadOpenBtn">Оставить заявку на подключение</button>
+  <p class="lead-hint">Свой прокат костюмов? Оставьте контакты — подключим онлайн-учёт.</p>
+</main>
+
+<!-- Модалка заявки на подключение -->
+<div class="lead-bg" id="leadBg" role="dialog" aria-modal="true" aria-labelledby="leadTitle" hidden>
+  <div class="lead-card">
+    <button class="lead-close" id="leadClose" aria-label="Закрыть">×</button>
+    <div id="leadFormWrap">
+      <h2 id="leadTitle">Заявка на подключение</h2>
+      <p class="lead-sub">Заполните контакты — мы свяжемся и откроем вам собственный аккаунт.</p>
+      <form id="leadForm" novalidate>
+        <div class="error" id="leadErr" role="alert"></div>
+        <div class="field"><label for="lName">Ваше имя</label><input id="lName" maxlength="80" autocomplete="name"></div>
+        <div class="field"><label for="lPhone">Телефон</label><input id="lPhone" type="tel" maxlength="40" autocomplete="tel" placeholder="+998 __ ___ __ __"></div>
+        <div class="field"><label for="lBiz">Название проката <span class="opt">— необязательно</span></label><input id="lBiz" maxlength="120"></div>
+        <div class="field"><label for="lComment">Комментарий <span class="opt">— необязательно</span></label><input id="lComment" maxlength="500"></div>
+        <button class="btn" type="submit" id="leadSubmit">Отправить заявку</button>
+      </form>
+    </div>
+    <div id="leadDone" class="lead-done" hidden>
+      <div class="lead-done-ico">✓</div>
+      <h2>Заявка отправлена</h2>
+      <p class="lead-sub">Спасибо! Мы свяжемся с вами в ближайшее время.</p>
+      <button class="btn" type="button" id="leadDoneBtn">Готово</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const form = document.getElementById('loginForm');
+const errEl = document.getElementById('err');
+const btn = document.getElementById('submitBtn');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errEl.classList.remove('show');
+  errEl.textContent = '';
+  btn.disabled = true;
+  btn.textContent = 'Входим…';
+
+  const login = document.getElementById('login').value.trim();
+  const password = document.getElementById('password').value;
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ login, password }),
+      credentials: 'same-origin',
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      errEl.textContent = data.error || 'Не удалось войти';
+      errEl.classList.add('show');
+      btn.disabled = false;
+      btn.textContent = 'Войти';
+      return;
+    }
+    location.replace('/');
+  } catch (e) {
+    errEl.textContent = 'Сетевая ошибка. Проверьте, что сервер запущен.';
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.textContent = 'Войти';
+  }
+});
+
+// Префилл логина если пришли с ?login=
+const params = new URLSearchParams(location.search);
+if (params.has('login')) {
+  document.getElementById('login').value = params.get('login');
+}
+
+document.querySelectorAll('[data-fill]').forEach((b) => {
+  b.addEventListener('click', () => {
+    const [login, password] = b.dataset.fill.split(':');
+    document.getElementById('login').value = login;
+    document.getElementById('password').value = password;
+    document.getElementById('login').focus();
+  });
+});
+
+// ===== Заявка на подключение =====
+const leadBg = document.getElementById('leadBg');
+const leadForm = document.getElementById('leadForm');
+const leadErr = document.getElementById('leadErr');
+const leadSubmit = document.getElementById('leadSubmit');
+const openLead = () => { leadBg.hidden = false; setTimeout(() => document.getElementById('lName').focus(), 50); };
+const closeLead = () => { leadBg.hidden = true; };
+document.getElementById('leadOpenBtn').addEventListener('click', openLead);
+document.getElementById('leadClose').addEventListener('click', closeLead);
+document.getElementById('leadDoneBtn').addEventListener('click', closeLead);
+leadBg.addEventListener('click', (e) => { if (e.target === leadBg) closeLead(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !leadBg.hidden) closeLead(); });
+
+leadForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  leadErr.classList.remove('show');
+  const name = document.getElementById('lName').value.trim();
+  const phone = document.getElementById('lPhone').value.trim();
+  const business = document.getElementById('lBiz').value.trim();
+  const comment = document.getElementById('lComment').value.trim();
+  if (name.length < 2) { leadErr.textContent = 'Укажите имя'; leadErr.classList.add('show'); return; }
+  if (phone.replace(/\D/g, '').length < 7) { leadErr.textContent = 'Укажите корректный телефон'; leadErr.classList.add('show'); return; }
+  leadSubmit.disabled = true; leadSubmit.textContent = 'Отправляем…';
+  try {
+    const res = await fetch('/api/leads', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, phone, business, comment }), credentials: 'same-origin',
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      leadErr.textContent = data.error || 'Не удалось отправить';
+      leadErr.classList.add('show');
+      leadSubmit.disabled = false; leadSubmit.textContent = 'Отправить заявку';
+      return;
+    }
+    document.getElementById('leadFormWrap').hidden = true;
+    document.getElementById('leadDone').hidden = false;
+  } catch {
+    leadErr.textContent = 'Сетевая ошибка. Попробуйте позже.';
+    leadErr.classList.add('show');
+    leadSubmit.disabled = false; leadSubmit.textContent = 'Отправить заявку';
+  }
+});
+</script>
+</body>
+</html>

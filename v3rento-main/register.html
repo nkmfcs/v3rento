@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Регистрация — Rento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF1F7;--surface:#FFFFFF;--surface-2:#F3F5FA;
+  --ink:#10162A;--ink-2:#4A5570;--ink-3:#8B93A8;
+  --line:#E2E6F0;--line-2:#CDD4E4;
+  --primary:#2A56C6;--primary-deep:#1C3F9A;
+  --green:#2B63D9;--mint-soft:#EEF2FA;--green-soft:#E4EAF8;
+  --red:#CB554A;--red-soft:#F8E5E2;
+  --shadow:0 1px 2px rgba(16,22,42,.05),0 14px 30px -18px rgba(16,22,42,.16);
+  --shadow-lg:0 34px 64px -30px rgba(16,22,42,.34);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:'Onest',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  color:var(--ink);-webkit-font-smoothing:antialiased;
+  min-height:100vh;display:grid;place-items:center;
+  background:
+    radial-gradient(900px 480px at 92% -12%,rgba(80,130,220,.22),transparent 55%),
+    radial-gradient(720px 600px at -6% 105%,rgba(42,86,198,.14),transparent 55%),
+    var(--bg);
+  padding:20px;
+}
+.u{font-family:'Unbounded','Onest',sans-serif;letter-spacing:-.015em}
+.card{
+  width:100%;max-width:440px;
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:24px;box-shadow:var(--shadow-lg);
+  padding:36px 32px 28px;
+}
+.brand{display:flex;align-items:center;gap:14px;margin-bottom:30px}
+.brand-mark{
+  width:48px;height:48px;border-radius:15px;
+  background:linear-gradient(145deg,#D4DCF5,#8BA0D4);
+  display:grid;place-items:center;font-size:26px;flex:none;
+  box-shadow:0 8px 16px -8px rgba(42,86,198,.4);
+}
+.brand-name{font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-.015em}
+.brand-sub{font-size:12.5px;color:var(--ink-3);margin-top:1px}
+h1{font-size:22px;font-weight:700;color:var(--ink);margin-bottom:6px;letter-spacing:-.01em}
+.lead{font-size:13.5px;color:var(--ink-3);margin-bottom:24px;line-height:1.5}
+.section-label{
+  font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--ink-3);margin:20px 0 12px;padding-bottom:8px;
+  border-bottom:1px solid var(--line);
+}
+form{display:flex;flex-direction:column;gap:14px}
+.field{display:flex;flex-direction:column;gap:6px}
+label{font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.07em}
+input{
+  background:var(--surface-2);border:1.5px solid var(--line);
+  border-radius:12px;padding:13px 14px;
+  font-family:inherit;font-size:15px;color:var(--ink);
+  outline:none;transition:all .14s;width:100%;
+}
+input:focus{border-color:var(--primary);background:var(--surface);box-shadow:0 0 0 3px var(--mint-soft)}
+input:hover:not(:focus){border-color:var(--line-2)}
+.hint-text{font-size:12px;color:var(--ink-3);line-height:1.4;margin-top:2px}
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  background:var(--primary);color:#fff;
+  font-family:inherit;font-weight:600;font-size:15px;
+  padding:15px;border-radius:14px;border:none;cursor:pointer;
+  margin-top:10px;
+  box-shadow:0 14px 28px -14px rgba(30,107,78,.7);
+  transition:all .15s;
+}
+.btn:hover:not(:disabled){background:var(--primary-deep);transform:translateY(-1px);box-shadow:0 18px 32px -14px rgba(30,107,78,.8)}
+.btn:active:not(:disabled){transform:translateY(0)}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.error{
+  background:var(--red-soft);border:1px solid #f0c9c4;color:var(--red);
+  font-size:13px;padding:12px 14px;border-radius:11px;line-height:1.4;
+  display:none;
+}
+.error.show{display:block;animation:shake .3s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.login-link{
+  margin-top:20px;text-align:center;font-size:13px;color:var(--ink-3);line-height:1.5;
+}
+.login-link a{color:var(--primary);font-weight:600;text-decoration:none}
+.login-link a:hover{text-decoration:underline}
+@media(max-width:420px){.card{padding:28px 22px 22px;border-radius:20px}h1{font-size:19px}}
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="brand">
+    <div class="brand-mark">🎭</div>
+    <div>
+      <div class="brand-name u">Rento</div>
+      <div class="brand-sub">костюмерная</div>
+    </div>
+  </div>
+
+  <h1>Открыть свой прокат</h1>
+  <p class="lead">Создайте аккаунт владельца — вы сможете пригласить своих сотрудников позже.</p>
+
+  <form id="regForm" autocomplete="off" novalidate>
+    <div class="error" id="err" role="alert"></div>
+
+    <div class="section-label">Информация о прокате</div>
+
+    <div class="field">
+      <label for="shopName">Название проката</label>
+      <input id="shopName" name="shopName" type="text" required
+             placeholder="Прокат «Карнавал»" maxlength="80"
+             autocomplete="organization">
+    </div>
+
+    <div class="section-label">Ваши данные</div>
+
+    <div class="field">
+      <label for="name">Ваше имя</label>
+      <input id="name" name="name" type="text" required
+             placeholder="Малика Каримова" maxlength="60"
+             autocomplete="name">
+    </div>
+
+    <div class="field">
+      <label for="login">Логин (для входа)</label>
+      <input id="login" name="login" type="text" required
+             placeholder="malika.k" maxlength="40"
+             autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <span class="hint-text">Только латинские буквы, цифры, _ . -</span>
+    </div>
+
+    <div class="field">
+      <label for="password">Пароль</label>
+      <input id="password" name="password" type="password" required
+             placeholder="Минимум 8 символов" maxlength="200"
+             autocomplete="new-password">
+    </div>
+
+    <button class="btn" type="submit" id="submitBtn">
+      <span id="btnText">Создать прокат</span>
+    </button>
+  </form>
+
+  <p class="login-link">
+    Уже есть аккаунт? <a href="/login.html">Войти</a>
+  </p>
+</main>
+
+<script>
+const form = document.getElementById('regForm');
+const errEl = document.getElementById('err');
+const btn = document.getElementById('submitBtn');
+const btnText = document.getElementById('btnText');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errEl.classList.remove('show');
+  btn.disabled = true;
+  btnText.textContent = 'Создаём прокат…';
+
+  const shopName = document.getElementById('shopName').value.trim();
+  const name = document.getElementById('name').value.trim();
+  const login = document.getElementById('login').value.trim();
+  const password = document.getElementById('password').value;
+
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shopName, name, login, password }),
+      credentials: 'same-origin',
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      showError(data.error || 'Не удалось зарегистрироваться');
+      return;
+    }
+    location.replace('/');
+  } catch {
+    showError('Сетевая ошибка. Проверьте соединение.');
+  }
+});
+
+function showError(msg) {
+  errEl.textContent = msg;
+  errEl.classList.add('show');
+  btn.disabled = false;
+  btnText.textContent = 'Создать прокат';
+}
+</script>
+</body>
+</html>
