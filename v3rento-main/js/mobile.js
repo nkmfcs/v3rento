@@ -10,8 +10,8 @@
 // CSS → верстка обычного браузера не меняется. НЕ включаем requestFullscreen():
 // без него Телеграм рисует свою шапку, а инсеты всё равно учитываются.
 (function initTelegramWebApp(){
-  const tg = window.Telegram && window.Telegram.WebApp;
-  if (!tg) return;                      // не в Телеграме — инсеты остаются 0
+  // Отключено — приложение работает как обычный сайт, не Telegram Mini App
+})();                      // не в Телеграме — инсеты остаются 0
   try { tg.ready(); } catch (e) {}
   try { tg.expand(); } catch (e) {}     // раскрыть на всю высоту (без fullscreen)
   const root = document.documentElement;
