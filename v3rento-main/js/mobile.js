@@ -10,8 +10,8 @@
 // CSS → верстка обычного браузера не меняется. НЕ включаем requestFullscreen():
 // без него Телеграм рисует свою шапку, а инсеты всё равно учитываются.
 (function initTelegramWebApp(){
-  // Отключено — приложение работает как обычный сайт, не Telegram Mini App
-})();                      // не в Телеграме — инсеты остаются 0
+  const tg = window.Telegram && window.Telegram.WebApp;
+  if (!tg) return;                      // не в Телеграме — инсеты остаются 0
   try { tg.ready(); } catch (e) {}
   try { tg.expand(); } catch (e) {}     // раскрыть на всю высоту (без fullscreen)
   const root = document.documentElement;
@@ -1282,7 +1282,65 @@ document.getElementById('costGrid').addEventListener('keydown',e=>{
 
 function openMCostume(type){
   const c=costumes.find(x=>x.type===type);if(!c)return;
-  document.getElementById('mcstArt').innerHTML=costumeSVG(type);
+  // Фото костюма
+  const _photos = c.photos || [];
+  const _artEl = document.getElementById('mcstArt');
+  const _photosEl = document.getElementById('mcstPhotos');
+  if (_photos.length > 0) {
+    _artEl.innerHTML = `<img src="${_photos[0].url}" style="width:100%;height:100%;object-fit:cover;border-radius:20px" alt="">`;
+  } else {
+    _artEl.innerHTML = costumeSVG(type);
+  }
+  const _canEdit = API.state.me?.role !== 'employee';
+  _photosEl.innerHTML = '';
+  _photos.forEach(p => {
+    const _thumb = document.createElement('div');
+    _thumb.className = 'photo-thumb';
+    _thumb.innerHTML = `<img src="${p.url}" alt=""><button class="photo-del" data-pid="${p.id}" aria-label="Удалить фото">×</button>`;
+    _thumb.querySelector('.photo-del').addEventListener('click', async ev => {
+      ev.stopPropagation();
+      if (!_canEdit) return;
+      try {
+        await API.request('DELETE', `/api/costumes/${c.id}/photos/${p.id}`);
+        const _idx = costumes.findIndex(x => x.type === type);
+        if (_idx >= 0) {
+          costumes[_idx].photos = (costumes[_idx].photos || []).filter(x => x.id !== p.id);
+          costumes[_idx].cover_url = costumes[_idx].photos[0]?.url || '';
+        }
+        openMCostume(type);
+        mToast('Фото удалено', '🗑');
+      } catch(err) { mToast('Ошибка: ' + err.message, '!'); }
+    });
+    _photosEl.appendChild(_thumb);
+  });
+  if (_canEdit && _photos.length < 3) {
+    const _addBtn = document.createElement('label');
+    _addBtn.className = 'photo-add';
+    _addBtn.title = 'Добавить фото';
+    _addBtn.innerHTML = `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><input type="file" accept="image/*" style="display:none">`;
+    _addBtn.querySelector('input').addEventListener('change', async ev => {
+      const file = ev.target.files[0];
+      if (!file) return;
+      if (file.size > 8 * 1024 * 1024) { mToast('Фото больше 8MB', '!'); return; }
+      _addBtn.classList.add('loading');
+      try {
+        const fd = new FormData();
+        fd.append('photo', file);
+        const res = await fetch(`/api/costumes/${c.id}/photos`, { method: 'POST', body: fd, credentials: 'include' });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Ошибка загрузки');
+        const _idx = costumes.findIndex(x => x.type === type);
+        if (_idx >= 0) {
+          costumes[_idx].photos = [...(costumes[_idx].photos || []), data.photo];
+          costumes[_idx].cover_url = costumes[_idx].photos[0]?.url || '';
+        }
+        openMCostume(type);
+        mToast('Фото добавлено', '✓');
+      } catch(err) { mToast('Ошибка: ' + err.message, '!'); }
+      finally { _addBtn.classList.remove('loading'); }
+    });
+    _photosEl.appendChild(_addBtn);
+  }
   document.getElementById('mcstName').textContent=c.name;
   const bc=c.st==='out'?'out':c.st==='rep'?'rep':'ok';
   const bl=c.st==='out'?'На прокате':c.st==='rep'?'Ремонт':'В наличии';
@@ -1377,6 +1435,10 @@ function openMCostumeModal(editType){
         <button type="button" data-cs="rep" class="${exist?.st==='rep'?'active':''}">🔧 Ремонт</button>
       </div></div>
       <div class="mf"><label>Описание</label><textarea id="mcmNote2" rows="2" maxlength="500">${e(exist?.note||'')}</textarea></div>
+      <div class="mf" id="mcmPhotoBlock" style="${exist?.id ? '' : 'display:none'}">
+        <label>Фото костюма <span style="color:var(--ink-3);font-weight:400">(до 3 штук)</span></label>
+        <div class="photo-strip" id="mcmPhotoStrip"></div>
+      </div>
     </div>
     <div class="modal-ft"><button class="btn ghost modal-cls">Отмена</button><button class="btn" id="mcmSave2">${exist?'Сохранить':'Создать'}</button></div>
   </div>`;
@@ -1392,6 +1454,53 @@ function openMCostumeModal(editType){
   bg.addEventListener('click',ev=>{if(ev.target===bg)close();});
   document.addEventListener('keydown',onKey);
   const releaseFocus=K.trapFocus(bg);
+  // Фото в модалке редактирования
+  if (exist?.id) {
+    const _mStrip = bg.querySelector('#mcmPhotoStrip');
+    const _renderModalPhotos = () => {
+      const _cur = costumes.find(x => x.type === exist.type);
+      const _mPhotos = _cur?.photos || [];
+      _mStrip.innerHTML = '';
+      _mPhotos.forEach(p => {
+        const _t = document.createElement('div');
+        _t.className = 'photo-thumb';
+        _t.innerHTML = `<img src="${p.url}" alt=""><button class="photo-del" data-pid="${p.id}" aria-label="Удалить">×</button>`;
+        _t.querySelector('.photo-del').addEventListener('click', async ev => {
+          ev.stopPropagation();
+          try {
+            await API.request('DELETE', `/api/costumes/${exist.id}/photos/${p.id}`);
+            const _i = costumes.findIndex(x => x.type === exist.type);
+            if (_i >= 0) costumes[_i].photos = (costumes[_i].photos||[]).filter(x=>x.id!==p.id);
+            _renderModalPhotos();
+          } catch(err) { mToast('Ошибка: '+err.message,'!'); }
+        });
+        _mStrip.appendChild(_t);
+      });
+      if (_mPhotos.length < 3) {
+        const _lbl = document.createElement('label');
+        _lbl.className = 'photo-add';
+        _lbl.innerHTML = `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><input type="file" accept="image/*" style="display:none">`;
+        _lbl.querySelector('input').addEventListener('change', async ev => {
+          const file = ev.target.files[0]; if (!file) return;
+          if (file.size > 8*1024*1024) { mToast('Фото > 8MB','!'); return; }
+          _lbl.classList.add('loading');
+          try {
+            const fd = new FormData(); fd.append('photo', file);
+            const res = await fetch(`/api/costumes/${exist.id}/photos`, {method:'POST',body:fd,credentials:'include'});
+            const data = await res.json();
+            if (!data.ok) throw new Error(data.error||'Ошибка');
+            const _i = costumes.findIndex(x=>x.type===exist.type);
+            if (_i >= 0) costumes[_i].photos = [...(costumes[_i].photos||[]), data.photo];
+            _renderModalPhotos();
+            mToast('Фото добавлено','✓');
+          } catch(err) { mToast('Ошибка: '+err.message,'!'); }
+          finally { _lbl.classList.remove('loading'); }
+        });
+        _mStrip.appendChild(_lbl);
+      }
+    };
+    _renderModalPhotos();
+  }
   bg.querySelector('#mcmSave2').addEventListener('click',async ev=>{
     ev.stopPropagation();
     const name=bg.querySelector('#mcmName2').value.trim();
