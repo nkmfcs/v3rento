@@ -84,7 +84,7 @@ body{background:var(--bg);min-height:100vh}
 .bell .dot{position:absolute;top:11px;right:12px;width:7px;height:7px;border-radius:50%;background:var(--red);border:2px solid var(--surface)}
 
 /* ===== HOME TOP (приветствие + hero) ===== */
-.home-top{display:none;flex:none;padding:calc(16px + var(--tg-inset-top)) 20px 18px}
+.home-top{display:none;flex:none;padding:12px 20px 18px}
 .home-top.active{display:block}
 .home-greet{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:18px;min-height:42px}
 .home-greet .gt{flex:1}
