@@ -10,8 +10,8 @@
    Вне Телеграма переменные не заданы → фолбэк 0 → верстка браузера не меняется.
    --tg-inset-top = отступ до безопасной зоны + до контентной зоны (под кнопками). */
 :root{
-  --tg-inset-top: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px));
-  --tg-inset-bottom: var(--tg-safe-area-inset-bottom, 0px);
+  --tg-inset-top: 0px;
+--tg-inset-bottom: 0px;
 }
 
 /* модалка */
@@ -68,7 +68,7 @@ body{background:var(--bg);min-height:100vh}
   max-width:480px;margin:0 auto;background:var(--bg);position:relative}
 
 /* ===== ВЕРХНИЙ ХЕДЕР (меняется по вкладке) ===== */
-.appbar{padding:calc(16px + var(--tg-inset-top)) 20px 12px;display:flex;align-items:center;gap:8px;flex:none;position:relative;min-height:calc(70px + var(--tg-inset-top));
+.appbar{padding:calc(12px + env(safe-area-inset-top, 0px)) 20px 12px;display:flex;align-items:center;gap:8px;flex:none;position:relative;min-height:64px);
   z-index:20;background:linear-gradient(var(--bg) 78%,transparent)}
 .appbar .hi{font-size:12.5px;color:var(--ink-3);font-weight:500}
 .appbar .nm{font-size:20px;font-weight:700;margin-top:-1px}
