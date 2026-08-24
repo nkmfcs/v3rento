@@ -5,11 +5,14 @@
 
 /* ===== Безопасные зоны Telegram Mini App =====
    В Телеграме плавающие кнопки (Закрыть / ⌄ … ) рисуются ПОВЕРХ вебвью — контент
-   надо сдвинуть под них. Телеграм (Bot API 8+) выставляет эти CSS-переменные сам,
-   но не все клиенты это делают → mobile.js дублирует их из JS (safeAreaInset).
-   Вне Телеграма переменные не заданы → фолбэк 0 → верстка браузера не меняется.
-   --tg-inset-top = отступ до безопасной зоны + до контентной зоны (под кнопками). */
+   надо сдвинуть под них. Вне Mini App --tg-inset-* = 0: telegram-web-app.js
+   выставляет свои CSS-переменные даже в обычном браузере, из-за этого сверху
+   была дыра на каждой странице. Класс .in-telegram ставит только mobile.js. */
 :root{
+  --tg-inset-top: 0px;
+  --tg-inset-bottom: 0px;
+}
+html.in-telegram{
   --tg-inset-top: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px));
   --tg-inset-bottom: var(--tg-safe-area-inset-bottom, 0px);
 }
@@ -68,7 +71,7 @@ body{background:var(--bg);min-height:100vh}
   max-width:480px;margin:0 auto;background:var(--bg);position:relative}
 
 /* ===== ВЕРХНИЙ ХЕДЕР (меняется по вкладке) ===== */
-.appbar{padding:calc(16px + var(--tg-inset-top)) 20px 12px;display:flex;align-items:center;gap:8px;flex:none;position:relative;min-height:calc(70px + var(--tg-inset-top));
+.appbar{padding:calc(8px + env(safe-area-inset-top, 0px) + var(--tg-inset-top)) 20px 8px;display:flex;align-items:center;gap:8px;flex:none;position:relative;min-height:calc(52px + env(safe-area-inset-top, 0px) + var(--tg-inset-top));
   z-index:20;background:linear-gradient(var(--bg) 78%,transparent)}
 .appbar .hi{font-size:12.5px;color:var(--ink-3);font-weight:500}
 .appbar .nm{font-size:20px;font-weight:700;margin-top:-1px}
@@ -84,9 +87,9 @@ body{background:var(--bg);min-height:100vh}
 .bell .dot{position:absolute;top:11px;right:12px;width:7px;height:7px;border-radius:50%;background:var(--red);border:2px solid var(--surface)}
 
 /* ===== HOME TOP (приветствие + hero) ===== */
-.home-top{display:none;flex:none;padding:calc(16px + var(--tg-inset-top)) 20px 18px}
+.home-top{display:none;flex:none;padding:calc(8px + env(safe-area-inset-top, 0px) + var(--tg-inset-top)) 20px 12px}
 .home-top.active{display:block}
-.home-greet{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:18px;min-height:42px}
+.home-greet{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px;min-height:36px}
 .home-greet .gt{flex:1}
 .home-greet .hi{font-size:12.5px;color:var(--ink-3);font-weight:500}
 .home-greet .nm{font-size:20px;font-weight:700;color:var(--ink);margin-top:2px}

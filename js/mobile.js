@@ -4,18 +4,25 @@
 
 // ===== Telegram Mini App: инициализация + безопасные зоны =====
 // В Телеграме плавающие кнопки (Закрыть / ⌄ …) перекрывают верх вебвью. Читаем
-// инсеты из WebApp API и дублируем их в CSS-переменные на :root (часть клиентов
-// НЕ выставляет их сама). CSS сдвигает шапку/низ под кнопки Телеграма.
-// Вне Телеграма window.Telegram.WebApp нет → переменные не задаются → фолбэк 0 в
-// CSS → верстка обычного браузера не меняется. НЕ включаем requestFullscreen():
-// без него Телеграм рисует свою шапку, а инсеты всё равно учитываются.
+// инсеты из WebApp API и дублируем их в CSS-переменные на :root.
+// telegram-web-app.js создаёт window.Telegram.WebApp ДАЖЕ вне Телеграма и может
+// выставить CSS-переменные → без проверки initData/platform сверху остаётся
+// дыра ~88px на каждой странице. Вне Mini App инсеты принудительно 0.
 (function initTelegramWebApp(){
   const tg = window.Telegram && window.Telegram.WebApp;
-  if (!tg) return;                      // не в Телеграме — инсеты остаются 0
-  try { tg.ready(); } catch (e) {}
-  try { tg.expand(); } catch (e) {}     // раскрыть на всю высоту (без fullscreen)
   const root = document.documentElement;
   const setVar = (name, px) => root.style.setProperty(name, (Number(px) || 0) + 'px');
+  const inTelegram = !!(tg && (tg.initData || (tg.platform && tg.platform !== 'unknown')));
+  if (!inTelegram) {
+    root.classList.remove('in-telegram');
+    ['--tg-safe-area-inset-top','--tg-safe-area-inset-right','--tg-safe-area-inset-bottom','--tg-safe-area-inset-left',
+     '--tg-content-safe-area-inset-top','--tg-content-safe-area-inset-right','--tg-content-safe-area-inset-bottom','--tg-content-safe-area-inset-left'
+    ].forEach((n) => setVar(n, 0));
+    return;
+  }
+  root.classList.add('in-telegram');
+  try { tg.ready(); } catch (e) {}
+  try { tg.expand(); } catch (e) {}
   function applyInsets(){
     const sa = tg.safeAreaInset || {};
     const csa = tg.contentSafeAreaInset || {};
@@ -23,9 +30,9 @@
     setVar('--tg-safe-area-inset-right', sa.right);
     setVar('--tg-safe-area-inset-bottom', sa.bottom);
     setVar('--tg-safe-area-inset-left', sa.left);
-    const saTop = Number(sa.top) || 0;
     const csaTop = Number(csa.top) || 0;
-    setVar('--tg-content-safe-area-inset-top', Math.max(csaTop, 88 - saTop, 48));
+    // Если API не дал content-inset — запас под кнопку «Закрыть», не 88px.
+    setVar('--tg-content-safe-area-inset-top', csaTop || 48);
     setVar('--tg-content-safe-area-inset-right', csa.right);
     setVar('--tg-content-safe-area-inset-bottom', csa.bottom);
     setVar('--tg-content-safe-area-inset-left', csa.left);
@@ -34,7 +41,7 @@
     tg.onEvent('safeAreaChanged', applyInsets);
     tg.onEvent('contentSafeAreaChanged', applyInsets);
   } catch (e) {}
-  applyInsets();                        // разово при старте
+  applyInsets();
 })();
 
 // хедеры по вкладкам (home обрабатывается через #homeTop)
