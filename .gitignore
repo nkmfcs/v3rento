@@ -16,10 +16,6 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
-# user uploads (keep folder)
+# загруженные фото (локальный fallback, не R2)
 uploads/*
 !uploads/.gitkeep
-
-# local pglite / data
-data/
-*.bak

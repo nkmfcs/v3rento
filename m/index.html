@@ -6,6 +6,7 @@
 <title>Rento — мобайл</title>
 <!-- Telegram Mini App SDK: даёт ready()/expand() и безопасные зоны (safeAreaInset).
      Вне Телеграма window.Telegram.WebApp не появляется — верстка браузера не меняется. -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>
   // Страховка: если init не отработает (ошибка JS) — всё равно показываем интерфейс.
   setTimeout(function(){ document.documentElement.classList.remove('app-loading'); }, 8000);
@@ -24,7 +25,7 @@
   @keyframes app-spin{to{transform:rotate(360deg)}}
   @media (prefers-reduced-motion:reduce){html.app-loading::after{animation:none}}
 </style>
-<link rel="stylesheet" href="/css/tokens.css?v=60">
+<link rel="stylesheet" href="/css/tokens.css?v=61">
 <link rel="stylesheet" href="/css/mobile.css?v=58">
 </head>
 <body>
@@ -488,9 +489,9 @@
 </div>
 
 <script src="/js/api.js?v=55"></script>
-<script src="/js/util.js?v=59"></script>
+<script src="/js/util.js?v=60"></script>
 <script src="/js/art.js?v=50"></script>
-<script src="/js/mobile.js?v=87"></script>
+<script src="/js/mobile.js?v=89"></script>
 <script src="/js/ui.js?v=40"></script>
 </body>
 </html>

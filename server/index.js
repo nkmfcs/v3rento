@@ -90,6 +90,10 @@ app.use((_req, res) => res.status(404).send('Not found'));
 // Глобальный error handler. Детали пишем в лог сервера, наружу — обобщённо
 // (в проде не раскрываем стек/сообщения ошибок клиенту).
 app.use((err, _req, res, _next) => {
+  if (err.type === 'entity.too.large' || err.status === 413) {
+    const photo = String(_req.originalUrl || _req.url || '').includes('/photos');
+    return res.status(400).json({ ok: false, error: photo ? 'Файл больше 3 МБ' : 'Слишком большой запрос' });
+  }
   console.error('[ERROR]', err);
   const body = { ok: false, error: 'internal_error' };
   if (process.env.NODE_ENV !== 'production') body.message = err.message;

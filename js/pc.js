@@ -217,7 +217,7 @@ function renderOrdersTable(){
     const asmClr={assembled:'var(--green)',incomplete:'var(--red)',progress:'var(--gold)'}[asm.kind];
     const asmBadge=asm.kind==='none'?'':`<div class="sub" style="color:${asmClr};font-weight:600">${asm.kind==='assembled'?'Собрано':asm.kind==='incomplete'?'Неполный':K.escapeHtml(asm.label)}</div>`;
     const verb=K.orderMainLabel(o.st, API.state.me?.role);
-    return `<tr data-oid="${o.id}" style="${o.danger?'background:var(--red-soft)':''}">
+    return `<tr data-oid="${K.escapeHtml(o.id)}" style="${o.danger?'background:var(--red-soft)':''}">
     <td class="ord-id">№${K.escapeHtml(o.id)}</td>
     <td><div class="cl-cell"><div class="mini-av" style="background:linear-gradient(135deg,${K.escapeHtml(o.g)})">${K.escapeHtml(o.av)}</div><div><div class="nm">${K.escapeHtml(o.cl)}</div><div class="sub">${K.escapeHtml(o.sub||'')}</div>${o.hasLoc?K.locPinHtml(o.delivery_addr,{phone:o.phone,name:o.cl,oid:o.id}):''}</div></div></td>
     <td><div class="thumbs">${thumbs}</div></td>
@@ -1230,7 +1230,7 @@ function openClient(idx){
   const last=ords[0];
   if(last){
     document.getElementById('clLastOrderCard').style.display='';
-    document.getElementById('clLastOrder').innerHTML=`<div class="cl-cell" style="padding:14px;background:var(--surface-2);border-radius:14px;cursor:pointer" data-open-ord="${last.id}">
+    document.getElementById('clLastOrder').innerHTML=`<div class="cl-cell" style="padding:14px;background:var(--surface-2);border-radius:14px;cursor:pointer" data-open-ord="${K.escapeHtml(last.id)}">
       <div class="mini-av" style="background:linear-gradient(135deg,${K.escapeHtml(last.g)})">${K.escapeHtml(last.av)}</div>
       <div style="flex:1"><div class="nm">Заказ №${K.escapeHtml(last.id)}</div><div class="sub">${K.escapeHtml(last.dates||last.dt||'')} · ${K.escapeHtml(last.lines?.map(l=>l.name).join(', ')||'')}</div></div>
       <div style="text-align:right"><div style="font-weight:700">${K.escapeHtml(last.sum||last.sm||'')}</div><span class="st ${last.st}">${K.escapeHtml(last.stl)}</span></div>
@@ -1448,11 +1448,16 @@ function renderPcPhotos(c){
     inp.type='file'; inp.accept='image/jpeg,image/png,image/webp';
     inp.onchange=async()=>{
       const f=inp.files&&inp.files[0]; if(!f)return;
+      if(f.size>3*1024*1024){toast('Файл больше 3 МБ','!');return;}
+      if(f.type && !/^image\/(jpeg|png|webp)$/i.test(f.type)){toast('Только JPEG, PNG или WebP','!');return;}
+      const btn=host.querySelector('#cstAddPh');
+      btn?.classList.add('loading');
       try{
         const ph=await API.Costumes.uploadPhoto(c.id,f);
         c.photos=c.photos||[]; c.photos.push(ph); c.cover_url=c.photos[0].url;
         renderWh(); openCostume(c.type); toast('Фото добавлено','✓');
       }catch(err){ toast(err.message,'!'); }
+      finally{ btn?.classList.remove('loading'); }
     };
     inp.click();
   });
@@ -1779,12 +1784,12 @@ function renderTeam(){
     const deactivated=m.is_active===false;
     const seen=deactivated?'деактивирован':fmtLastSeen(m.last_login_at);
     const seenC=deactivated?'var(--red)':(seen==='онлайн'?'var(--green)':'var(--ink-3)');
-    return `<tr data-id="${m.id}">
-    <td><div class="cl-cell"><div class="mini-av" style="background:linear-gradient(135deg,${m.gradient||'#8EB69B,#5E8475'})">${K.escapeHtml(m.avatar_text||'?')}</div><div class="nm">${K.escapeHtml(m.name)}</div></div></td>
+    return `<tr data-id="${K.escapeHtml(m.id)}">
+    <td><div class="cl-cell"><div class="mini-av" style="background:linear-gradient(135deg,${K.escapeHtml(m.gradient||'#8EB69B,#5E8475')})">${K.escapeHtml(m.avatar_text||'?')}</div><div class="nm">${K.escapeHtml(m.name)}</div></div></td>
     <td><span class="sub">${K.escapeHtml(m.email||'—')}</span></td>
     <td><span class="st ${rm.cls}">${K.escapeHtml(rm.label)}</span></td>
     <td><span style="font-size:12px;color:${seenC}">${seen}</span></td>
-    <td data-stats-cell="${m.id}"><span class="sub">${m.role==='owner'?'—':'…'}</span></td>
+    <td data-stats-cell="${K.escapeHtml(m.id)}"><span class="sub">${m.role==='owner'?'—':'…'}</span></td>
     <td>${m.role==='owner'?'':'<button class="row-act" data-deactivate aria-label="Деактивировать">⋯</button>'}</td></tr>`;
   }).join('');
   const cntEl=document.getElementById('teamCount');
@@ -1793,7 +1798,7 @@ function renderTeam(){
   if(onlineEl)onlineEl.textContent=teamMembers.filter(m=>m.is_active!==false&&fmtLastSeen(m.last_login_at)==='онлайн').length;
   // Метрики сборки по каждой сотруднице/менеджеру (полнота % · ⭐). Владельца пропускаем.
   teamMembers.filter(m=>m.role!=='owner').forEach(async m=>{
-    const cell=document.querySelector(`[data-stats-cell="${m.id}"]`);
+    const cell=document.querySelector(`[data-stats-cell="${K.cssEscape(m.id)}"]`);
     if(!cell)return;
     try{
       const s=await API.Team.stats(m.id);

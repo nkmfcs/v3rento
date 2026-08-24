@@ -106,13 +106,19 @@ router.get('/dashboard/upcoming-bookings', async (req, res) => {
   res.json({ ok: true, items: rows });
 });
 
-const geoCache = new Map();
+// Простой кэш с TTL (1 час). Размер ≤ 500 записей — при превышении вытесняем oldest.
+const GEO_TTL_MS = 60 * 60 * 1000;
+const GEO_MAX = 500;
+const geoCache = new Map(); // key → { lat, lng, label, expiresAt }
 router.get('/geocode', async (req, res) => {
   const q = String(req.query.q || '').trim();
   if (q.length < 3) return res.status(400).json({ ok: false, error: 'слишком короткий адрес' });
   if (q.length > 200) return res.status(400).json({ ok: false, error: 'адрес слишком длинный' });
   const key = q.toLowerCase();
-  if (geoCache.has(key)) return res.json({ ok: true, ...geoCache.get(key) });
+  const cached = geoCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) {
+    return res.json({ ok: true, lat: cached.lat, lng: cached.lng, label: cached.label });
+  }
   const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q='
     + encodeURIComponent(q + ', Ташкент, Узбекистан');
   try {
@@ -127,8 +133,10 @@ router.get('/geocode', async (req, res) => {
       lng: Number(arr[0].lon),
       label: arr[0].display_name || q,
     } : { lat: null, lng: null };
-    if (geoCache.size > 200) geoCache.clear();
-    geoCache.set(key, hit);
+    if (geoCache.size >= GEO_MAX) {
+      geoCache.delete(geoCache.keys().next().value);
+    }
+    geoCache.set(key, { ...hit, expiresAt: Date.now() + GEO_TTL_MS });
     res.json({ ok: true, ...hit });
   } catch {
     res.json({ ok: true, lat: null, lng: null });

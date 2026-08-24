@@ -67,10 +67,10 @@
   function escapeHtml(str){
     if(str === null || str === undefined) return '';
     return String(str)
-      .replace(/&/g, '&')
-      .replace(/</g, '<')
-      .replace(/>/g, '>')
-      .replace(/"/g, '"')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
   }
   const cssEscape = (global.CSS && global.CSS.escape)

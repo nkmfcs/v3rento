@@ -154,6 +154,13 @@ router.get('/', async (req, res) => {
     conds.push(`o.assigned_to = $${params.length}`);
   }
 
+  const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 200));
+  const offset = Math.max(0, Number(req.query.offset) || 0);
+  params.push(limit + 1); // +1 чтобы определить has_more
+  const limitIdx = params.length;
+  params.push(offset);
+  const offsetIdx = params.length;
+
   const rows = await query(
     `SELECT o.id, o.number, o.status, o.issue_date, o.return_date, o.days, o.slot,
             o.delivery_type, o.delivery_addr, o.delivery_cost, o.yandex_ref, o.yandex_status,
@@ -178,10 +185,12 @@ router.get('/', async (req, res) => {
      LEFT JOIN users au ON au.id = o.assigned_to AND au.tenant_id = o.tenant_id
      WHERE ${conds.join(' AND ')}
      ORDER BY o.number DESC
-     LIMIT 200`,
+     LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
     params
   );
-  res.json({ ok: true, items: rows });
+  const hasMore = rows.length > limit;
+  if (hasMore) rows.pop();
+  res.json({ ok: true, items: rows, has_more: hasMore, offset, limit });
 });
 
 router.get('/:id', async (req, res) => {
@@ -245,6 +254,8 @@ router.post('/', requireRole('owner', 'manager'), async (req, res) => {
     // Скидка не может быть отрицательной или больше стоимости проката (иначе total < 0).
     const addrErr = b.delivery_addr != null ? checkFreeText(b.delivery_addr, { field: 'адрес', max: 200 }) : null;
     if (addrErr) throw Object.assign(new Error(addrErr), { status: 400 });
+    const noteErr = b.note != null ? checkFreeText(b.note, { field: 'заметка', max: 1000 }) : null;
+    if (noteErr) throw Object.assign(new Error(noteErr), { status: 400 });
     const delivery_addr = String(b.delivery_addr || '').trim() || null;
     const delivery_type = delivery_addr ? 'addr' : 'pickup';
     const discount = Math.min(Math.max(0, Number(b.discount) || 0), subtotal);
@@ -255,7 +266,8 @@ router.post('/', requireRole('owner', 'manager'), async (req, res) => {
     const deposit = Number.isFinite(Number(b.deposit)) && Number(b.deposit) >= 0 ? Number(b.deposit) : 0;
 
     const nextRes = await client.query(
-      `SELECT COALESCE(MAX(number), 1000) + 1 AS n FROM orders WHERE tenant_id = $1`,
+      `SELECT COALESCE(MAX(number), 1000) + 1 AS n
+         FROM (SELECT number FROM orders WHERE tenant_id = $1 FOR UPDATE) s`,
       [req.tenantId]
     );
     const number = nextRes.rows[0].n;
@@ -333,6 +345,10 @@ router.post('/', requireRole('owner', 'manager'), async (req, res) => {
     res.json({ ok: true, order: full });
   } catch (e) {
     await client.query('ROLLBACK').catch(() => {});
+    // 23505 = unique_violation (гонка на номере заказа — крайне редко, но возможно)
+    if (e.code === '23505' && String(e.constraint || '').includes('number')) {
+      return res.status(409).json({ ok: false, error: 'Конфликт номера заказа, повторите запрос' });
+    }
     res.status(e.status || 500).json({ ok: false, error: e.message });
   }
 });

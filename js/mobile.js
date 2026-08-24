@@ -522,7 +522,7 @@ function openOrder(id){
     const done=checks.filter(c=>c.on).length;
     document.getElementById('detCheckMeta').textContent=`${done} из ${checks.length} готово`;
     document.getElementById('detChecks').innerHTML=checks.map(c=>
-      `<div class="check-row${c.on?' on':''}"${c.id?` data-check-id="${c.id}"`:''}><div class="cb${c.on?' on':''}">${c.on?'✓':''}</div><div class="ct">${K.escapeHtml(c.t)}</div><div class="cr-who">${K.escapeHtml(c.who||'')}</div></div>`).join('');
+      `<div class="check-row${c.on?' on':''}"${c.id?` data-check-id="${K.escapeHtml(c.id)}"`:''}><div class="cb${c.on?' on':''}">${c.on?'✓':''}</div><div class="ct">${K.escapeHtml(c.t)}</div><div class="cr-who">${K.escapeHtml(c.who||'')}</div></div>`).join('');
   }
   if(o.st==='build'){
     checkCard.style.display='';
@@ -593,7 +593,7 @@ function openOrder(id){
   const delCost=o.delCost||0;
   const total=subtotal-(o.disc||0)+delCost;
   document.getElementById('detMoney').innerHTML=moneyLines+
-    (o.disc?`<div class="money-line"><span class="k">${o.discL||'Скидка'}</span><span class="v" style="color:var(--green)">−${fmt(o.disc)}</span></div>`:'')+
+    (o.disc?`<div class="money-line"><span class="k">${K.escapeHtml(o.discL||'Скидка')}</span><span class="v" style="color:var(--green)">−${fmt(o.disc)}</span></div>`:'')+
     (delCost?`<div class="money-line"><span class="k">Доставка</span><span class="v">${fmt(delCost)}</span></div>`:'')+
     `<div class="money-line total"><span class="k">Итого</span><span class="v">${fmt(total)}</span></div>`;
   document.getElementById('detDep').textContent=o.dep?fmt(o.dep):'—';
@@ -607,7 +607,7 @@ function openOrder(id){
   const showAdvance=!!mainAction && (!emp || empCanAdvance);
   const canPay=mRem>0&&o.st!=='cancelled'&&!emp;
   document.getElementById('detActions').innerHTML=
-    (showAdvance?`<button class="btn" id="orderAdvance" data-oid="${o.id}">${K.escapeHtml(mainAction)}</button>`:'')+
+    (showAdvance?`<button class="btn" id="orderAdvance" data-oid="${K.escapeHtml(o.id)}">${K.escapeHtml(mainAction)}</button>`:'')+
     (canPay?`<button class="btn pay-cta" id="mOrderPay">${mPaid>0?'Доплатить ':'Принять '}${fmt(mRem)}</button>`:'')+
     `<div class="act-row">
       <button type="button" class="act-ghost" id="orderMsgCl">Написать в Telegram</button>
@@ -751,13 +751,13 @@ function openMClient(idx){
   document.getElementById('mclDebtCard').style.display=c.debt?'':'none';
   document.getElementById('mclDebt').textContent=c.debt?Math.round(c.debt/1000)+' тыс':'0';
   const fields=[['Телефон',c.phone||'—'],['Email',c.email||'—'],['Telegram',c.tg||'—'],['Адрес',c.addr||'—']];
-  document.getElementById('mclFields').innerHTML=fields.map(([k,v])=>`<div class="set-m-row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
+  document.getElementById('mclFields').innerHTML=fields.map(([k,v])=>`<div class="set-m-row"><span class="k">${K.escapeHtml(String(k))}</span><span class="v">${K.escapeHtml(String(v))}</span></div>`).join('');
   document.getElementById('mclNoteCard').style.display=c.note?'':'none';
   document.getElementById('mclNote').textContent=c.note||'';
   const ords=orders.filter(o=>o.cl===c.name);
   document.getElementById('mclOrdersCard').style.display=ords.length?'':'none';
   document.getElementById('mclOrders').innerHTML=ords.map(o=>
-    `<div class="set-m-row" data-mc-ord="${o.id}" style="cursor:pointer">
+    `<div class="set-m-row" data-mc-ord="${K.escapeHtml(o.id)}" style="cursor:pointer">
       <span class="k">№${K.escapeHtml(o.id)}<br><span style="font-size:11px">${K.escapeHtml(o.dt||'')}</span></span>
       <span class="v" style="text-align:right"><b>${K.escapeHtml(o.sm||o.sum||'')}</b><br><span class="st ${o.st}" style="font-size:10.5px">${K.escapeHtml(o.stl)}</span></span>
     </div>`).join('');
@@ -1258,7 +1258,7 @@ function renderCostGrid(){
     const bl=c.st==='out'?'На прокате':c.st==='rep'?'Ремонт':`${c.avail} из ${c.total}`;
     return `<div class="cost-card" data-wh-st="${c.st}" data-t="${e(c.type)}" tabindex="0" role="button" aria-label="Костюм ${e(c.name)}" style="cursor:pointer">
       <span class="av-badge ${bc}">${bl}</span>
-      <div class="c-art">${costumeSVG(c.type)}</div>
+      <div class="c-art">${costumeThumb(c)}</div>
       <div class="c-name">${e(c.name)}</div>
       <div class="c-sizes">Разм. ${e(c.sizes)}</div>
       ${c.location?`<div class="c-sizes">${e(K.slotLabel(c.location))}</div>`:''}
@@ -1280,67 +1280,50 @@ document.getElementById('costGrid').addEventListener('keydown',e=>{
   if(card){ e.preventDefault(); openMCostume(card.dataset.t); }
 });
 
+function renderMPhotos(c){
+  const host=document.getElementById('mcstPhotos');
+  if(!host)return;
+  const can=API.state.me?.role!=='employee';
+  const photos=c.photos||[];
+  const e=K.escapeHtml;
+  host.innerHTML=photos.map(p=>`<div class="photo-cell"><img src="${e(p.url)}" alt="">${can?`<button type="button" class="x" data-ph-del="${e(p.id)}" aria-label="Удалить фото">×</button>`:''}</div>`).join('')
+    +(can&&photos.length<10?`<button type="button" class="photo-add" id="mcstAddPh" aria-label="Добавить фото">+</button>`:'');
+  host.querySelector('#mcstAddPh')?.addEventListener('click',()=>{
+    if(!c.id){mToast('Сначала сохраните костюм','!');return;}
+    const inp=document.createElement('input');
+    inp.type='file'; inp.accept='image/jpeg,image/png,image/webp';
+    inp.onchange=async()=>{
+      const f=inp.files&&inp.files[0]; if(!f)return;
+      if(f.size>3*1024*1024){mToast('Файл больше 3 МБ','!');return;}
+      if(f.type && !/^image\/(jpeg|png|webp)$/i.test(f.type)){mToast('Только JPEG, PNG или WebP','!');return;}
+      const btn=host.querySelector('#mcstAddPh');
+      btn?.classList.add('loading');
+      try{
+        const ph=await API.Costumes.uploadPhoto(c.id,f);
+        const row=costumes.find(x=>x.id===c.id)||c;
+        row.photos=row.photos||[]; row.photos.push(ph); row.cover_url=row.photos[0].url;
+        renderCostGrid(); openMCostume(c.type); mToast('Фото добавлено','✓');
+      }catch(err){ mToast(err.message,'!'); }
+      finally{ btn?.classList.remove('loading'); }
+    };
+    inp.click();
+  });
+  host.querySelectorAll('[data-ph-del]').forEach(b=>b.onclick=async ev=>{
+    ev.stopPropagation();
+    try{
+      await API.Costumes.removePhoto(c.id,b.dataset.phDel);
+      const row=costumes.find(x=>x.id===c.id)||c;
+      row.photos=(row.photos||[]).filter(x=>x.id!==b.dataset.phDel);
+      row.cover_url=row.photos[0]?.url||'';
+      renderCostGrid(); openMCostume(c.type);
+    }catch(err){ mToast(err.message,'!'); }
+  });
+}
+
 function openMCostume(type){
   const c=costumes.find(x=>x.type===type);if(!c)return;
-  // Фото костюма
-  const _photos = c.photos || [];
-  const _artEl = document.getElementById('mcstArt');
-  const _photosEl = document.getElementById('mcstPhotos');
-  if (_photos.length > 0) {
-    _artEl.innerHTML = `<img src="${_photos[0].url}" style="width:100%;height:100%;object-fit:cover;border-radius:20px" alt="">`;
-  } else {
-    _artEl.innerHTML = costumeSVG(type);
-  }
-  const _canEdit = API.state.me?.role !== 'employee';
-  _photosEl.innerHTML = '';
-  _photos.forEach(p => {
-    const _thumb = document.createElement('div');
-    _thumb.className = 'photo-thumb';
-    _thumb.innerHTML = `<img src="${p.url}" alt=""><button class="photo-del" data-pid="${p.id}" aria-label="Удалить фото">×</button>`;
-    _thumb.querySelector('.photo-del').addEventListener('click', async ev => {
-      ev.stopPropagation();
-      if (!_canEdit) return;
-      try {
-        await API.request('DELETE', `/api/costumes/${c.id}/photos/${p.id}`);
-        const _idx = costumes.findIndex(x => x.type === type);
-        if (_idx >= 0) {
-          costumes[_idx].photos = (costumes[_idx].photos || []).filter(x => x.id !== p.id);
-          costumes[_idx].cover_url = costumes[_idx].photos[0]?.url || '';
-        }
-        openMCostume(type);
-        mToast('Фото удалено', '🗑');
-      } catch(err) { mToast('Ошибка: ' + err.message, '!'); }
-    });
-    _photosEl.appendChild(_thumb);
-  });
-  if (_canEdit && _photos.length < 3) {
-    const _addBtn = document.createElement('label');
-    _addBtn.className = 'photo-add';
-    _addBtn.title = 'Добавить фото';
-    _addBtn.innerHTML = `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><input type="file" accept="image/*" style="display:none">`;
-    _addBtn.querySelector('input').addEventListener('change', async ev => {
-      const file = ev.target.files[0];
-      if (!file) return;
-      if (file.size > 8 * 1024 * 1024) { mToast('Фото больше 8MB', '!'); return; }
-      _addBtn.classList.add('loading');
-      try {
-        const fd = new FormData();
-        fd.append('photo', file);
-        const res = await fetch(`/api/costumes/${c.id}/photos`, { method: 'POST', body: fd, credentials: 'include' });
-        const data = await res.json();
-        if (!data.ok) throw new Error(data.error || 'Ошибка загрузки');
-        const _idx = costumes.findIndex(x => x.type === type);
-        if (_idx >= 0) {
-          costumes[_idx].photos = [...(costumes[_idx].photos || []), data.photo];
-          costumes[_idx].cover_url = costumes[_idx].photos[0]?.url || '';
-        }
-        openMCostume(type);
-        mToast('Фото добавлено', '✓');
-      } catch(err) { mToast('Ошибка: ' + err.message, '!'); }
-      finally { _addBtn.classList.remove('loading'); }
-    });
-    _photosEl.appendChild(_addBtn);
-  }
+  document.getElementById('mcstArt').innerHTML=costumeThumb(c);
+  renderMPhotos(c);
   document.getElementById('mcstName').textContent=c.name;
   const bc=c.st==='out'?'out':c.st==='rep'?'rep':'ok';
   const bl=c.st==='out'?'На прокате':c.st==='rep'?'Ремонт':'В наличии';
@@ -1383,7 +1366,7 @@ function openMCostume(type){
   document.getElementById('mcstNote').textContent=c.note||'Костюм в хорошем состоянии. Регулярно стирается и отпаривается перед каждой выдачей.';
   document.getElementById('mcstOrdersCard').style.display=ords.length?'':'none';
   document.getElementById('mcstOrders').innerHTML=ords.map(o=>
-    `<div class="set-m-row" data-mco-ord="${o.id}" style="cursor:pointer">
+    `<div class="set-m-row" data-mco-ord="${K.escapeHtml(o.id)}" style="cursor:pointer">
       <span class="k">№${K.escapeHtml(o.id)}<br><span style="font-size:11px">${K.escapeHtml(o.dt||'')}</span></span>
       <span class="v" style="text-align:right"><b>${K.escapeHtml(o.sm||o.sum||'')}</b><br><span style="font-size:11px">${K.escapeHtml(o.cl)}</span></span>
     </div>`).join('');
@@ -1435,10 +1418,6 @@ function openMCostumeModal(editType){
         <button type="button" data-cs="rep" class="${exist?.st==='rep'?'active':''}">🔧 Ремонт</button>
       </div></div>
       <div class="mf"><label>Описание</label><textarea id="mcmNote2" rows="2" maxlength="500">${e(exist?.note||'')}</textarea></div>
-      <div class="mf" id="mcmPhotoBlock" style="${exist?.id ? '' : 'display:none'}">
-        <label>Фото костюма <span style="color:var(--ink-3);font-weight:400">(до 3 штук)</span></label>
-        <div class="photo-strip" id="mcmPhotoStrip"></div>
-      </div>
     </div>
     <div class="modal-ft"><button class="btn ghost modal-cls">Отмена</button><button class="btn" id="mcmSave2">${exist?'Сохранить':'Создать'}</button></div>
   </div>`;
@@ -1454,53 +1433,6 @@ function openMCostumeModal(editType){
   bg.addEventListener('click',ev=>{if(ev.target===bg)close();});
   document.addEventListener('keydown',onKey);
   const releaseFocus=K.trapFocus(bg);
-  // Фото в модалке редактирования
-  if (exist?.id) {
-    const _mStrip = bg.querySelector('#mcmPhotoStrip');
-    const _renderModalPhotos = () => {
-      const _cur = costumes.find(x => x.type === exist.type);
-      const _mPhotos = _cur?.photos || [];
-      _mStrip.innerHTML = '';
-      _mPhotos.forEach(p => {
-        const _t = document.createElement('div');
-        _t.className = 'photo-thumb';
-        _t.innerHTML = `<img src="${p.url}" alt=""><button class="photo-del" data-pid="${p.id}" aria-label="Удалить">×</button>`;
-        _t.querySelector('.photo-del').addEventListener('click', async ev => {
-          ev.stopPropagation();
-          try {
-            await API.request('DELETE', `/api/costumes/${exist.id}/photos/${p.id}`);
-            const _i = costumes.findIndex(x => x.type === exist.type);
-            if (_i >= 0) costumes[_i].photos = (costumes[_i].photos||[]).filter(x=>x.id!==p.id);
-            _renderModalPhotos();
-          } catch(err) { mToast('Ошибка: '+err.message,'!'); }
-        });
-        _mStrip.appendChild(_t);
-      });
-      if (_mPhotos.length < 3) {
-        const _lbl = document.createElement('label');
-        _lbl.className = 'photo-add';
-        _lbl.innerHTML = `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><input type="file" accept="image/*" style="display:none">`;
-        _lbl.querySelector('input').addEventListener('change', async ev => {
-          const file = ev.target.files[0]; if (!file) return;
-          if (file.size > 8*1024*1024) { mToast('Фото > 8MB','!'); return; }
-          _lbl.classList.add('loading');
-          try {
-            const fd = new FormData(); fd.append('photo', file);
-            const res = await fetch(`/api/costumes/${exist.id}/photos`, {method:'POST',body:fd,credentials:'include'});
-            const data = await res.json();
-            if (!data.ok) throw new Error(data.error||'Ошибка');
-            const _i = costumes.findIndex(x=>x.type===exist.type);
-            if (_i >= 0) costumes[_i].photos = [...(costumes[_i].photos||[]), data.photo];
-            _renderModalPhotos();
-            mToast('Фото добавлено','✓');
-          } catch(err) { mToast('Ошибка: '+err.message,'!'); }
-          finally { _lbl.classList.remove('loading'); }
-        });
-        _mStrip.appendChild(_lbl);
-      }
-    };
-    _renderModalPhotos();
-  }
   bg.querySelector('#mcmSave2').addEventListener('click',async ev=>{
     ev.stopPropagation();
     const name=bg.querySelector('#mcmName2').value.trim();
@@ -1765,7 +1697,7 @@ function mCalListPaint(){
   document.getElementById('mCalList').innerHTML=
     `<div class="sec-title" style="padding:14px 20px 8px">${dayLabel}</div>`+
     (evs.length
-      ?evs.map(e=>`<div class="card blk mcal-item" data-oid="${e.id}"><div class="mcal-dot2" style="background:${mCalDotC[e.st]||'var(--primary)'}"></div><div style="flex:1"><div class="nm">${K.escapeHtml(e.name)} · №${e.id}</div><div style="font-size:11px;color:var(--ink-3);margin-top:2px">${mCalStL[e.st]||e.st} · ${API.fmt.dateRange(e.issue_date,e.return_date)}</div></div><span class="st ${e.st}">${mCalStL[e.st]||e.st}</span></div>`).join('')
+      ?evs.map(e=>`<div class="card blk mcal-item" data-oid="${K.escapeHtml(e.id)}"><div class="mcal-dot2" style="background:${mCalDotC[e.st]||'var(--primary)'}"></div><div style="flex:1"><div class="nm">${K.escapeHtml(e.name)} · №${K.escapeHtml(e.id)}</div><div style="font-size:11px;color:var(--ink-3);margin-top:2px">${K.escapeHtml(mCalStL[e.st]||e.st)} · ${API.fmt.dateRange(e.issue_date,e.return_date)}</div></div><span class="st ${K.escapeHtml(e.st)}">${K.escapeHtml(mCalStL[e.st]||e.st)}</span></div>`).join('')
       :'<div style="text-align:center;padding:24px;color:var(--ink-3);font-size:13px">Нет заказов</div>');
 }
 renderMCalGrid();
@@ -2665,7 +2597,7 @@ function renderHomeBookings(){
     const mon=MONTHS_SHORT_RU[dt.getMonth()]||'';
     const day=dt.getDate();
     const cnt=(o.lines||[]).length||(o.items||[]).length||1;
-    return `<div class="book-item" data-hboi="${o.id}" style="cursor:pointer">
+    return `<div class="book-item" data-hboi="${K.escapeHtml(o.id)}" style="cursor:pointer">
       <div class="date-chip"><div class="m">${mon}</div><div class="d">${day}</div></div>
       <div><div class="nm">${K.escapeHtml(o.cl)}</div><div class="ds">${cnt} костюм${cnt===1?'':'ов'} · ${o.days||1} дн</div></div>
       <div class="sum">${K.escapeHtml(o.sm||o.sum||'—')}</div>

@@ -24,6 +24,9 @@ const MIGRATIONS = [
   'migration-v13-client-addresses.sql',
   'migration-v14-room-bins.sql',
   'migration-v15-order-slot.sql',
+  'migration-v16-indexes.sql',
+  'migration-v17-status-checks.sql',
+  'migration-v18-order-number-per-tenant.sql',
 ];
 
 export async function bootstrapIfNeeded(db) {

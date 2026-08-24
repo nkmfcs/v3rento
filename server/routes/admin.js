@@ -5,6 +5,7 @@ import { query, queryOne, currentClient, setBypassRls } from '../db.js';
 import { requireAuth, requirePlatformAdmin, bcryptjs } from '../auth.js';
 import { generatePassword } from '../security.js';
 import { logAudit } from '../audit.js';
+import { makeSlug, makeUniqueSlug } from '../slug.js';
 
 const router = Router();
 router.use(requireAuth, requirePlatformAdmin);
@@ -13,24 +14,6 @@ router.use(requireAuth, requirePlatformAdmin);
 router.use(async (_req, _res, next) => {
   try { await setBypassRls(true); next(); } catch (e) { next(e); }
 });
-
-const TRANSLIT = {
-  а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'yo',ж:'zh',з:'z',и:'i',й:'y',к:'k',л:'l',
-  м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'kh',ц:'ts',ч:'ch',ш:'sh',
-  щ:'shch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya',
-};
-function slugify(name) {
-  return (name.trim().toLowerCase()
-    .replace(/[а-яё]/g, (c) => TRANSLIT[c] || '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 40)) || `shop-${Date.now()}`;
-}
-async function uniqueSlug(base) {
-  let slug = base, i = 1;
-  while (await queryOne(`SELECT id FROM tenants WHERE slug = $1`, [slug])) slug = `${base}-${i++}`;
-  return slug;
-}
 
 // ===== Создать аккаунт клиента (новый тенант + владелец) ====================
 // НЕ трогает сессию оператора. Возвращает логин + пароль для передачи клиенту.
@@ -56,7 +39,10 @@ router.post('/create-account', async (req, res) => {
   }
   const pw = wantsCustom ? password : generatePassword(14);
   const ownerName = (typeof name === 'string' && name.trim()) ? name.trim() : shopName.trim();
-  const slug = await uniqueSlug(slugify(shopName));
+  const slug = await makeUniqueSlug(
+    makeSlug(shopName),
+    (s) => queryOne('SELECT id FROM tenants WHERE slug = $1', [s])
+  );
 
   const client = currentClient();
   try {

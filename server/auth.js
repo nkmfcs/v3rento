@@ -28,7 +28,7 @@ export function verifySession(token) {
 export function setSessionCookie(res, token) {
   res.cookie(COOKIE_NAME, token, {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: 'strict',
     secure: process.env.NODE_ENV === 'production',
     path: '/',
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 дней
@@ -36,7 +36,12 @@ export function setSessionCookie(res, token) {
 }
 
 export function clearSessionCookie(res) {
-  res.clearCookie(COOKIE_NAME, { path: '/' });
+  res.clearCookie(COOKIE_NAME, {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: process.env.NODE_ENV === 'production',
+  });
 }
 
 /** Middleware: разбирает cookie → req.session = { userId, login, role, tenantId } | null */
@@ -74,7 +79,13 @@ export async function requireAuth(req, res, next) {
 
 // Тенант-оператор платформы (демо «Карнавал»). Его владелец = админ платформы:
 // видит заявки и заводит клиентам аккаунты. Можно переопределить через env.
-export const PLATFORM_TENANT_ID = process.env.PLATFORM_TENANT_ID || '00000000-0000-0000-0000-000000000001';
+export const PLATFORM_TENANT_ID = (() => {
+  const id = process.env.PLATFORM_TENANT_ID;
+  if (!id && process.env.NODE_ENV === 'production') {
+    throw new Error('PLATFORM_TENANT_ID обязателен в production');
+  }
+  return id || '00000000-0000-0000-0000-000000000001';
+})();
 
 /** Middleware: только владелец тенанта-оператора платформы (провижининг клиентов). */
 export function requirePlatformAdmin(req, res, next) {
@@ -130,7 +141,7 @@ export function rateLimit({ windowMs = 15 * 60_000, max = 10 } = {}) {
  */
 export function dbRateLimit({ windowMs, max, prefix = 'rl' }) {
   return async (req, res, next) => {
-    if (process.env.NODE_ENV !== 'production') return next();
+    if (process.env.RATE_LIMIT_DISABLED === 'true') return next();
     try {
       const key = `${prefix}:${req.ip}:${String(req.body?.login ?? '').toLowerCase()}`.slice(0, 200);
       const now = Date.now();

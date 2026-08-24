@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { pool, queryOne, query } from '../db.js';
 import { signSession, setSessionCookie, clearSessionCookie, requireAuth, dbRateLimit, bcryptjs } from '../auth.js';
 import { logAudit } from '../audit.js';
+import { makeSlug, makeUniqueSlug } from '../slug.js';
 
 const router = Router();
 
@@ -27,7 +28,10 @@ router.post('/login', loginLimiter, async (req, res) => {
     [login.trim().toLowerCase()]
   );
 
+  // Фиктивный хеш для timing-safe ответа (поглощаем ~100ms bcrypt даже если юзер не найден)
+  const DUMMY_HASH = '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy';
   if (!user || !user.is_active) {
+    await bcryptjs.compare(password, DUMMY_HASH);
     return res.status(401).json({ ok: false, error: 'Неверный логин или пароль' });
   }
 
@@ -139,16 +143,10 @@ router.post('/register', registerLimiter, async (req, res) => {
   }
 
   // Slug из названия проката: только a-z, 0-9, дефис
-  const slug = shopName.trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9а-яё\s]/gi, '')
-    .replace(/[а-яё]/gi, (c) => translitChar(c))
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
-    .slice(0, 40) || `shop-${Date.now()}`;
-
-  // Если slug занят — добавляем суффикс
-  const uniqueSlug = await makeUniqueSlug(slug);
+  const uniqueSlug = await makeUniqueSlug(
+    makeSlug(shopName),
+    (slug) => queryOne('SELECT id FROM tenants WHERE slug = $1', [slug])
+  );
 
   const client = await pool.connect();
   try {
@@ -384,24 +382,4 @@ function randomGradient() {
     '#E8D4F5,#9B4AC4', '#F5D4D4,#C44A4A', '#D4F0F5,#3D7AD9',
   ];
   return palettes[Math.floor(Math.random() * palettes.length)];
-}
-
-async function makeUniqueSlug(base) {
-  let slug = base;
-  let i = 1;
-  while (true) {
-    const exists = await queryOne(`SELECT id FROM tenants WHERE slug = $1`, [slug]);
-    if (!exists) return slug;
-    slug = `${base}-${i++}`;
-  }
-}
-
-const TRANSLIT = {
-  а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'yo',ж:'zh',з:'z',и:'i',
-  й:'y',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',
-  у:'u',ф:'f',х:'kh',ц:'ts',ч:'ch',ш:'sh',щ:'shch',ъ:'',ы:'y',
-  ь:'',э:'e',ю:'yu',я:'ya',
-};
-function translitChar(c) {
-  return TRANSLIT[c.toLowerCase()] ?? '';
 }

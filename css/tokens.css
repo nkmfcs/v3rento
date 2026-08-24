@@ -154,8 +154,9 @@ a{color:inherit;text-decoration:none}
 .photo-cell img{width:100%;height:100%;object-fit:cover;display:block}
 .photo-cell .x{position:absolute;top:2px;right:2px;width:20px;height:20px;border:none;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:13px;cursor:pointer;line-height:20px;padding:0}
 .photo-add{width:64px;height:64px;border-radius:12px;border:1.5px dashed var(--line-2);background:var(--surface-2);display:grid;place-items:center;cursor:pointer;font-size:22px;color:var(--ink-3);font-family:inherit}
-.cst-cover{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}
-.wh-art,.c-art{overflow:hidden}
+.photo-add.loading{opacity:.5;pointer-events:none}
+.cst-cover{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;position:absolute;inset:0}
+.wh-art,.c-art,.cst-art,#mcstArt{overflow:hidden;position:relative}
 
 /* ===== Адрес / карты ===== */
 .del-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}

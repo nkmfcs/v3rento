@@ -1,6 +1,7 @@
 /* Централизованная безопасность: заголовки + CSRF-защита по Origin + генерация паролей.
  * Без внешних зависимостей — полный контроль над каждым правилом. */
 import crypto from 'node:crypto';
+import { publicImgOrigins } from './s3.js';
 
 // Алфавит без неоднозначных символов (0/O, 1/l/I) — удобно диктовать по телефону.
 const PW_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
@@ -36,7 +37,7 @@ const CSP = [
   "script-src 'self' 'unsafe-inline' https://telegram.org",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com data:",
-  "img-src 'self' data:",
+  `img-src 'self' data: blob: ${publicImgOrigins().join(' ')}`,
   "connect-src 'self'",
   "frame-src https://yandex.uz https://*.yandex.uz https://*.yandex.ru",
   isProd ? "frame-ancestors 'none'" : "frame-ancestors *",

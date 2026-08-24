@@ -5,7 +5,7 @@ import { requireRole } from '../auth.js';
 import { HOLDING_STATUSES } from '../stock.js';
 import { checkFreeText } from '../validate.js';
 import { logAudit } from '../audit.js';
-import { putObject, deleteObject } from '../s3.js';
+import { putObject, deleteObject, publicUrl } from '../s3.js';
 import express from 'express';
 
 const router = Router();
@@ -26,17 +26,28 @@ const ALLOWED_MIME = {
   'image/webp': 'webp',
 };
 
+function sniffImage(buf) {
+  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg';
+  if (buf.length >= 8 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return 'image/png';
+  if (buf.length >= 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') return 'image/webp';
+  return null;
+}
+
+function photoPublicUrl(id, objectKey) {
+  return publicUrl(objectKey) || '/api/media/' + id;
+}
+
 async function photosFor(costumeIds, tenantId) {
   if (!costumeIds.length) return {};
   const rows = await query(
-    `SELECT id, costume_id, sort FROM costume_photos
+    `SELECT id, costume_id, sort, object_key FROM costume_photos
      WHERE tenant_id = $1 AND costume_id = ANY($2)
      ORDER BY sort, created_at`,
     [tenantId, costumeIds]
   );
   const by = {};
   for (const p of rows) {
-    const item = { id: p.id, url: '/api/media/' + p.id, sort: p.sort };
+    const item = { id: p.id, url: photoPublicUrl(p.id, p.object_key), sort: p.sort };
     if (!by[p.costume_id]) by[p.costume_id] = [];
     by[p.costume_id].push(item);
   }
@@ -192,16 +203,19 @@ router.post(
   '/:id/photos',
   requireRole('owner', 'manager'),
   express.raw({
-    type: (req) => /^image\/(jpeg|png|webp)$/i.test(String(req.headers['content-type'] || '').split(';')[0].trim()),
+    type: (req) => {
+      const t = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+      return !t || t === 'application/octet-stream' || t.startsWith('image/');
+    },
     limit: MAX_BYTES,
   }),
   async (req, res) => {
-    const mime = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
-    const ext = ALLOWED_MIME[mime];
-    if (!ext) return res.status(400).json({ ok: false, error: 'Только JPEG, PNG или WebP' });
     const buf = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || []);
     if (!buf.length) return res.status(400).json({ ok: false, error: 'Пустой файл' });
     if (buf.length > MAX_BYTES) return res.status(400).json({ ok: false, error: 'Файл больше 3 МБ' });
+    const mime = sniffImage(buf);
+    const ext = mime && ALLOWED_MIME[mime];
+    if (!ext) return res.status(400).json({ ok: false, error: 'Только JPEG, PNG или WebP' });
     const costume = await queryOne(
       `SELECT id FROM costumes WHERE id = $1 AND tenant_id = $2 AND is_active = TRUE`,
       [req.params.id, req.tenantId]
@@ -224,7 +238,7 @@ router.post(
       [photoId, req.tenantId, req.params.id, stored.storage, stored.key, mime, buf.length, sort]
     );
     await logAudit(req, 'costume.photo', 'costume', req.params.id, { photo_id: photoId });
-    res.json({ ok: true, photo: { id: row.id, url: '/api/media/' + row.id, sort: row.sort } });
+    res.json({ ok: true, photo: { id: row.id, url: photoPublicUrl(row.id, stored.key), sort: row.sort } });
   }
 );
 
