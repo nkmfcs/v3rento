@@ -11,24 +11,40 @@ const UPLOADS = join(ROOT, 'uploads');
 function envFirst(...keys) {
   for (const k of keys) {
     const v = process.env[k];
-    if (v != null && String(v).trim()) return String(v).trim();
+    if (v != null && String(v).trim()) {
+      return String(v).trim().replace(/^['"]|['"]$/g, '').trim();
+    }
   }
   return '';
 }
 
 function cfg() {
-  const endpoint = envFirst('S3_ENDPOINT', 'R2_ENDPOINT').replace(/\/$/, '');
-  const isR2 = /r2\.cloudflarestorage\.com/i.test(endpoint);
+  let endpoint = envFirst('S3_ENDPOINT', 'R2_ENDPOINT').replace(/\/$/, '');
+  if (endpoint && !/^https?:\/\//i.test(endpoint)) endpoint = 'https://' + endpoint;
+  const bucket = envFirst('S3_BUCKET', 'R2_BUCKET', 'R2_BUCKET_NAME');
+  let origin = endpoint;
+  try {
+    if (endpoint) {
+      const u = new URL(endpoint);
+      const parts = u.pathname.replace(/\/+$/, '').split('/').filter(Boolean);
+      // Если в endpoint уже /bucket — не дублируем в path.
+      if (bucket && parts[0] === bucket) origin = u.origin;
+      else origin = `${u.protocol}//${u.host}`;
+    }
+  } catch { /* оставим как есть */ }
+  const isR2 = /r2\.cloudflarestorage\.com/i.test(origin);
+  const regionRaw = envFirst('S3_REGION', 'R2_REGION') || (isR2 ? 'auto' : 'us-east-1');
   return {
-    bucket: envFirst('S3_BUCKET', 'R2_BUCKET', 'R2_BUCKET_NAME'),
-    region: envFirst('S3_REGION', 'R2_REGION') || (isR2 ? 'auto' : 'us-east-1'),
-    endpoint,
+    bucket,
+    region: isR2 ? 'auto' : regionRaw,
+    endpoint: origin,
     access: envFirst('S3_ACCESS_KEY', 'S3_ACCESS_KEY_ID', 'R2_ACCESS_KEY_ID', 'R2_ACCESS_KEY'),
     secret: envFirst('S3_SECRET_KEY', 'S3_SECRET_ACCESS_KEY', 'R2_SECRET_ACCESS_KEY', 'R2_SECRET_KEY'),
     publicBase: envFirst('S3_PUBLIC_URL', 'R2_PUBLIC_URL', 'R2_PUBLIC_BASE_URL').replace(/\/$/, ''),
     isR2,
   };
 }
+
 
 export function s3Enabled() {
   const c = cfg();
@@ -66,26 +82,29 @@ function encodePath(path) {
 async function signedFetch(method, key, body, contentType) {
   const c = cfg();
   if (!c.bucket || !c.access || !c.secret) throw new Error('R2/S3 не настроен');
+  if (/r2\.dev/i.test(c.endpoint)) {
+    throw new Error('S3_ENDPOINT должен быть https://<ACCOUNT_ID>.r2.cloudflarestorage.com, а не r2.dev');
+  }
   const encodedKey = encodePath(String(key).replace(/^\/+/, ''));
   const host = c.endpoint
     ? new URL(c.endpoint).host
     : `${c.bucket}.s3.${c.region}.amazonaws.com`;
   const path = c.endpoint ? `/${c.bucket}/${encodedKey}` : `/${encodedKey}`;
   const url = c.endpoint
-    ? `${c.endpoint}/${c.bucket}/${encodedKey}`
+    ? `${c.endpoint.replace(/\/$/, '')}/${c.bucket}/${encodedKey}`
     : `https://${host}/${encodedKey}`;
   const payload = body && method !== 'GET' && method !== 'HEAD' ? body : Buffer.alloc(0);
   const now = new Date();
   const amzDate = isoBasic(now);
   const dateStamp = amzDate.slice(0, 8);
   const payloadHash = sha256Hex(payload);
+  // Подписываем только стабильные заголовки. Content-Length/Type fetch может
+  // переписать — из‑за этого R2 отвечает 401 Unauthorized.
   const headers = {
     host,
     'x-amz-date': amzDate,
     'x-amz-content-sha256': payloadHash,
   };
-  if (contentType) headers['content-type'] = contentType;
-  if (payload.length) headers['content-length'] = String(payload.length);
   const signedHeaderNames = Object.keys(headers).sort();
   const signedHeaders = signedHeaderNames.join(';');
   const canonicalHeaders = signedHeaderNames.map((h) => `${h}:${headers[h]}\n`).join('');
@@ -97,14 +116,22 @@ async function signedFetch(method, key, body, contentType) {
   const kService = hmac(kRegion, 's3');
   const kSigning = hmac(kService, 'aws4_request');
   const signature = createHmac('sha256', kSigning).update(stringToSign, 'utf8').digest('hex');
-  headers.authorization = `AWS4-HMAC-SHA256 Credential=${c.access}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+  const reqHeaders = {
+    ...headers,
+    authorization: `AWS4-HMAC-SHA256 Credential=${c.access}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
+  };
+  if (contentType) reqHeaders['content-type'] = contentType;
   const res = await fetch(url, {
     method,
-    headers,
+    headers: reqHeaders,
     body: method === 'GET' || method === 'HEAD' ? undefined : payload,
   });
   if (!res.ok) {
     const t = await res.text().catch(() => '');
+    console.error('[s3]', method, res.status, {
+      host, bucket: c.bucket, region: c.region, key,
+      access: c.access.slice(0, 4) + '…',
+    }, t.slice(0, 300));
     throw new Error(`R2/S3 ${method} ${res.status}: ${t.slice(0, 240)}`);
   }
   return res;

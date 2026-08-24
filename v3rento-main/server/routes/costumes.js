@@ -230,7 +230,20 @@ router.post(
     }
     const photoId = crypto.randomUUID();
     const key = `${req.tenantId}/${req.params.id}/${photoId}.${ext}`;
-    const stored = await putObject(key, buf, mime);
+    let stored;
+    try {
+      stored = await putObject(key, buf, mime);
+    } catch (e) {
+      console.error('[photos] storage', e);
+      const msg = String(e && e.message || e);
+      const unauthorized = /401|Unauthorized|403|SignatureDoesNotMatch/i.test(msg);
+      return res.status(502).json({
+        ok: false,
+        error: unauthorized
+          ? 'R2 отклонил ключи (401). S3_ENDPOINT = https://<ACCOUNT_ID>.r2.cloudflarestorage.com (не r2.dev), S3_REGION = auto, ключи — Access Key ID и Secret от R2 API Token.'
+          : 'Не удалось сохранить фото в облако',
+      });
+    }
     const sort = count?.n || 0;
     const row = await queryOne(
       `INSERT INTO costume_photos (id, tenant_id, costume_id, storage, object_key, mime, bytes, sort)
