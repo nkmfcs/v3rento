@@ -1,49 +1,12 @@
-/* PGlite-адаптер с интерфейсом node-postgres.
- *
- * Прод ходит в Neon через `pg`. В этой среде отдельного Postgres нет,
- * поэтому тот же API (pool / query / withTenantContext) работает поверх
- * встроенного PGlite. Данные лежат в каталоге PGLITE_DATA и переживают рестарт.
- */
-import { PGlite } from '@electric-sql/pglite';
-import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
+/* База: Neon/Postgres если задан DATABASE_URL, иначе локальный PGlite (превью).
+   На Railway/проде ОБЯЗАН быть DATABASE_URL — тогда это те же клиенты и заказы,
+   что на телефоне. PGlite не импортируется в проде (пакета там нет). */
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { mkdirSync } from 'node:fs';
-import { bootstrapIfNeeded } from './bootstrap.js';
 
 const als = new AsyncLocalStorage();
 const BUSINESS_TZ = process.env.DB_TIMEZONE || 'Asia/Tashkent';
-const DATA_DIR = process.env.PGLITE_DATA || '/workspace/data/rento-pg';
-
-mkdirSync(DATA_DIR, { recursive: true });
-
-let dbPromise = null;
-let db = null;
-
-function startDb() {
-  if (!dbPromise) {
-    dbPromise = (async () => {
-      const instance = await PGlite.create(DATA_DIR, { extensions: { pgcrypto } });
-      await instance.exec(`SET timezone = '${BUSINESS_TZ.replace(/'/g, "''")}'`);
-      await bootstrapIfNeeded(instance);
-      // Сброс лимитера входов: в превью наши проверки и клики быстро упираются в 10/15 мин.
-      if (process.env.NODE_ENV !== 'production') {
-        await instance.exec(`DELETE FROM rate_limits`).catch(() => {});
-      }
-      db = instance;
-      return instance;
-    })();
-  }
-  return dbPromise;
-}
-
-export function waitDb() {
-  return startDb();
-}
-
-/** Соединение текущего запроса (если запрос идёт в тенант-контексте). */
-export function currentClient() {
-  return als.getStore()?.client ?? null;
-}
+const USE_PG = !!(process.env.DATABASE_URL && String(process.env.DATABASE_URL).trim());
 
 function serializeValue(v) {
   if (v instanceof Date) {
@@ -64,73 +27,129 @@ function serializeRow(row) {
 
 function toResult(r) {
   const rows = (r?.rows ?? []).map(serializeRow);
-  // SELECT: affectedRows === 0 даже при найденных строках — берём rows.length.
-  // UPDATE/DELETE без RETURNING: rows пустой, нужен affectedRows.
-  const rowCount = rows.length || Number(r?.affectedRows ?? 0);
+  const rowCount = rows.length || Number(r?.rowCount ?? r?.affectedRows ?? 0);
   return { rows, rowCount };
 }
 
-async function rawQuery(text, params) {
-  const instance = db || (await startDb());
+export function currentClient() {
+  return als.getStore()?.client ?? null;
+}
+
+// ── Neon / Postgres (прод) ──────────────────────────────────────────────────
+let pgPool = null;
+
+async function initPg() {
+  if (pgPool) return pgPool;
+  const pg = await import('pg');
+  const Pool = pg.default?.Pool ?? pg.Pool;
+  pgPool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+    max: 5,
+  });
+  const client = await pgPool.connect();
+  try {
+    await client.query(`SET timezone = '${BUSINESS_TZ.replace(/'/g, "''")}'`);
+  } finally {
+    client.release();
+  }
+  console.log('[db] Neon/Postgres (DATABASE_URL)');
+  return pgPool;
+}
+
+async function pgRawQuery(text, params) {
+  const p = pgPool || await initPg();
+  return toResult(await p.query(text, params));
+}
+
+async function pgWithTenant(tenantId, bypassRls, fn) {
+  const p = pgPool || await initPg();
+  const client = await p.connect();
+  try {
+    await client.query(
+      `SELECT set_config('app.tenant_id', $1, false), set_config('app.bypass_rls', $2, false)`,
+      [tenantId ?? '', bypassRls ? 'on' : 'off']
+    );
+    const wrappedClient = {
+      query: (text, params) => client.query(text, params).then(toResult),
+      release: () => {},
+    };
+    return await als.run({ client: wrappedClient }, fn);
+  } finally {
+    try {
+      await client.query(
+        `SELECT set_config('app.tenant_id', '', false), set_config('app.bypass_rls', 'off', false)`
+      );
+    } catch { /* ignore */ }
+    client.release();
+  }
+}
+
+// ── PGlite (только превью / нет DATABASE_URL) ───────────────────────────────
+let litePromise = null;
+let lite = null;
+let liteChain = Promise.resolve();
+
+function liteExclusive(fn) {
+  if (als.getStore()?.held) return fn();
+  let release;
+  const next = new Promise((resolve) => { release = resolve; });
+  const prev = liteChain;
+  liteChain = next;
+  return prev.then(() => als.run({ held: true }, async () => {
+    try { return await fn(); }
+    finally { release(); }
+  }));
+}
+
+async function initLite() {
+  if (litePromise) return litePromise;
+  litePromise = (async () => {
+    const dir = process.env.PGLITE_DATA || '/workspace/data/rento-pg';
+    mkdirSync(dir, { recursive: true });
+    const { PGlite } = await import('@electric-sql/pglite');
+    const { pgcrypto } = await import('@electric-sql/pglite/contrib/pgcrypto');
+    const { bootstrapIfNeeded } = await import('./bootstrap.js');
+    const instance = await PGlite.create(dir, { extensions: { pgcrypto } });
+    await instance.exec(`SET timezone = '${BUSINESS_TZ.replace(/'/g, "''")}'`);
+    await bootstrapIfNeeded(instance);
+    if (process.env.NODE_ENV !== 'production') {
+      await instance.exec(`DELETE FROM rate_limits`).catch(() => {});
+    }
+    lite = instance;
+    console.log('[db] PGlite (нет DATABASE_URL) →', dir);
+    return instance;
+  })();
+  return litePromise;
+}
+
+async function liteRawQuery(text, params) {
+  const instance = lite || (await initLite());
   const r = params !== undefined
     ? await instance.query(text, params)
     : await instance.query(text);
   return toResult(r);
 }
 
-let chain = Promise.resolve();
-
-function exclusive(fn) {
-  if (als.getStore()?.held) return fn();
-  let release;
-  const next = new Promise((resolve) => { release = resolve; });
-  const prev = chain;
-  chain = next;
-  return prev.then(() => als.run({ held: true }, async () => {
-    try {
-      return await fn();
-    } finally {
-      release();
-    }
-  }));
-}
-
-function makeClient() {
+function liteClient() {
   return {
-    async query(text, params) {
-      return rawQuery(text, params);
-    },
+    async query(text, params) { return liteRawQuery(text, params); },
     release() {},
   };
 }
 
-export async function query(text, params) {
-  const c = currentClient();
-  const r = await (c ? c.query(text, params) : exclusive(() => rawQuery(text, params)));
-  return r.rows;
-}
-
-export async function queryOne(text, params) {
-  const rows = await query(text, params);
-  return rows[0] ?? null;
-}
-
-/**
- * Выполняет fn в контексте тенанта: ставит app.tenant_id на время запроса.
- * Всё, что внутри (включая query/queryOne), видит только строки этого проката.
- */
-export async function withTenantContext(tenantId, bypassRls, fn) {
-  return exclusive(async () => {
-    const client = makeClient();
+async function liteWithTenant(tenantId, bypassRls, fn) {
+  return liteExclusive(async () => {
+    const client = liteClient();
     try {
-      await rawQuery(
+      await liteRawQuery(
         `SELECT set_config('app.tenant_id', $1, false), set_config('app.bypass_rls', $2, false)`,
         [tenantId ?? '', bypassRls ? 'on' : 'off']
       );
       return await als.run({ held: true, client }, fn);
     } finally {
       try {
-        await rawQuery(
+        await liteRawQuery(
           `SELECT set_config('app.tenant_id', '', false), set_config('app.bypass_rls', 'off', false)`
         );
       } catch { /* ignore */ }
@@ -138,22 +157,56 @@ export async function withTenantContext(tenantId, bypassRls, fn) {
   });
 }
 
-export async function setBypassRls(on) {
-  await rawQuery(`SELECT set_config('app.bypass_rls', $1, false)`, [on ? 'on' : 'off']);
+// ── общий API ───────────────────────────────────────────────────────────────
+export async function waitDb() {
+  return USE_PG ? initPg() : initLite();
 }
 
-/** Совместимость с `pg.Pool`: query / connect / end. */
+export async function query(text, params) {
+  const c = currentClient();
+  if (c) {
+    const r = await c.query(text, params);
+    return r.rows;
+  }
+  if (USE_PG) return (await pgRawQuery(text, params)).rows;
+  return (await liteExclusive(() => liteRawQuery(text, params))).rows;
+}
+
+export async function queryOne(text, params) {
+  const rows = await query(text, params);
+  return rows[0] ?? null;
+}
+
+export async function withTenantContext(tenantId, bypassRls, fn) {
+  return USE_PG
+    ? pgWithTenant(tenantId, bypassRls, fn)
+    : liteWithTenant(tenantId, bypassRls, fn);
+}
+
+export async function setBypassRls(on) {
+  if (USE_PG) {
+    await pgRawQuery(`SELECT set_config('app.bypass_rls', $1, false)`, [on ? 'on' : 'off']);
+    return;
+  }
+  await liteRawQuery(`SELECT set_config('app.bypass_rls', $1, false)`, [on ? 'on' : 'off']);
+}
+
 export const pool = {
   async query(text, params) {
-    return exclusive(() => rawQuery(text, params));
+    if (USE_PG) return pgRawQuery(text, params);
+    return liteExclusive(() => liteRawQuery(text, params));
   },
   async connect() {
+    if (USE_PG) {
+      const p = pgPool || await initPg();
+      return p.connect();
+    }
     let unlock;
     const held = new Promise((resolve) => { unlock = resolve; });
     const ready = new Promise((resolve) => {
-      exclusive(async () => {
+      liteExclusive(async () => {
         resolve({
-          query: (text, params) => rawQuery(text, params),
+          query: (text, params) => liteRawQuery(text, params),
           release() { unlock(); },
         });
         await held;
@@ -161,5 +214,7 @@ export const pool = {
     });
     return ready;
   },
-  async end() {},
+  async end() {
+    if (pgPool) await pgPool.end();
+  },
 };

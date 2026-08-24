@@ -79,13 +79,7 @@ export async function requireAuth(req, res, next) {
 
 // Тенант-оператор платформы (демо «Карнавал»). Его владелец = админ платформы:
 // видит заявки и заводит клиентам аккаунты. Можно переопределить через env.
-export const PLATFORM_TENANT_ID = (() => {
-  const id = process.env.PLATFORM_TENANT_ID;
-  if (!id && process.env.NODE_ENV === 'production') {
-    throw new Error('PLATFORM_TENANT_ID обязателен в production');
-  }
-  return id || '00000000-0000-0000-0000-000000000001';
-})();
+export const PLATFORM_TENANT_ID = process.env.PLATFORM_TENANT_ID || '00000000-0000-0000-0000-000000000001';
 
 /** Middleware: только владелец тенанта-оператора платформы (провижининг клиентов). */
 export function requirePlatformAdmin(req, res, next) {

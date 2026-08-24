@@ -101,6 +101,10 @@ app.use((err, _req, res, _next) => {
 });
 
 await waitDb();
+try {
+  const { s3Enabled } = await import('./s3.js');
+  console.log(s3Enabled() ? '  ☁ фото → Cloudflare R2 / S3' : '  📁 фото → uploads/ (R2 не задан в env)');
+} catch { /* s3 опционален */ }
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n  🎭 Rento — http://0.0.0.0:${PORT}\n`);
 });
