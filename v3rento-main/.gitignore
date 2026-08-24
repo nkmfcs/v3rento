@@ -1,0 +1,21 @@
+# dependencies
+node_modules/
+
+# env (содержит DATABASE_URL, AUTH_SECRET)
+.env.local
+.env*.local
+
+# Claude Code tooling (скилы/локальный конфиг — не код приложения)
+.claude/
+
+# logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# загруженные фото (локальный fallback, не R2)
+uploads/*
+!uploads/.gitkeep
