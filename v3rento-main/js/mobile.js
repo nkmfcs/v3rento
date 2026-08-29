@@ -1568,7 +1568,6 @@ function renderTeamM(){
   }).join('');
 }
 function openTeamMModal(){
-  const palette=['#5FC4BA,#2E8F86','#DDB261,#C2891F','#8EB69B,#5E8475','#9B8EC4,#6E5BA8','#E0796D,#CB554A','#4FBE93,#2E9E78'];
   const bg=document.createElement('div');
   bg.className='modal-bg';
   bg.setAttribute('role','dialog');
@@ -1576,16 +1575,14 @@ function openTeamMModal(){
   bg.innerHTML=`<div class="modal-card">
     <div class="modal-hd"><h3>Пригласить в команду</h3><button class="modal-cls" aria-label="Закрыть">×</button></div>
     <div class="modal-body">
-      <div class="mf"><label>Имя сотрудника</label><input id="tmmName" placeholder="Алишер Бектемиров" maxlength="80"></div>
-      <div class="mf"><label>Email</label><input id="tmmEmail" type="email" inputmode="email" placeholder="alisher@karnaval.uz" maxlength="100"></div>
-      <div class="mf"><label>Телефон <span style="color:var(--ink-3);font-weight:400">— необязательно</span></label><input id="tmmPhone" type="tel" inputmode="tel" placeholder="+998 90 123-45-67" maxlength="20"></div>
-      <div class="mf"><label>Роль</label><div class="type-pick"><button type="button" data-rl="conf" class="active">👔 Менеджер</button><button type="button" data-rl="req">👤 Сотрудник</button></div></div>
-      <div style="font-size:11.5px;color:var(--ink-3);line-height:1.5;background:var(--surface-2);padding:11px 13px;border-radius:11px">На указанный email будет отправлено приглашение со ссылкой для входа.</div>
+      <div class="mf"><label>Имя сотрудника</label><input id="tmmName" placeholder="Алишер Бектемиров" maxlength="80" autocomplete="name"></div>
+      <div class="mf"><label>Роль</label><div class="type-pick"><button type="button" data-rl="manager">👔 Менеджер</button><button type="button" data-rl="employee" class="active">👤 Сотрудник</button></div></div>
+      <div style="font-size:11.5px;color:var(--ink-3);line-height:1.5;background:var(--surface-2);padding:11px 13px;border-radius:11px">Сгенерируем ссылку-приглашение. Отправьте её сотруднику в Telegram, WhatsApp или любым другим способом. Ссылка действует 7 дней и одноразовая.</div>
     </div>
-    <div class="modal-ft"><button class="btn ghost modal-cls">Отмена</button><button class="btn" id="tmmSave">Пригласить</button></div>
+    <div class="modal-ft"><button class="btn ghost modal-cls">Отмена</button><button class="btn" id="tmmSave">Создать ссылку</button></div>
   </div>`;
   document.body.appendChild(bg);
-  let role='conf';
+  let role='employee';
   bg.querySelectorAll('.type-pick button').forEach(b=>b.addEventListener('click',()=>{
     bg.querySelectorAll('.type-pick button').forEach(x=>x.classList.remove('active'));
     b.classList.add('active');role=b.dataset.rl;
@@ -1596,16 +1593,36 @@ function openTeamMModal(){
   bg.addEventListener('click',ev=>{if(ev.target===bg)close();});
   document.addEventListener('keydown',onKey);
   const releaseFocus=K.trapFocus(bg);
-  bg.querySelector('#tmmSave').addEventListener('click',ev=>{
+  bg.querySelector('#tmmSave').addEventListener('click',async ev=>{
     ev.stopPropagation();
-    const name=bg.querySelector('#tmmName').value.trim();
-    const email=bg.querySelector('#tmmEmail').value.trim();
-    if(!name||!email){mToast('Заполните имя и email','!');return;}
-    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){mToast('Неверный email','!');return;}
-    const av=mSafeInitials(name, false);
-    finances.salaries.push({name,role:role==='conf'?'manager':'employee',av,g:palette[finances.salaries.length%palette.length]});
-    renderTeamM();close();
-    mToast(`Приглашение отправлено на ${email}`,'📧');
+    const nameHint=bg.querySelector('#tmmName').value.trim();
+    if(!nameHint){mToast('Введите имя сотрудника','!');return;}
+    const saveBtn=bg.querySelector('#tmmSave');
+    saveBtn.disabled=true;
+    try{
+      const r=await API.Team.invite({role,name_hint:nameHint});
+      bg.querySelector('.modal-body').innerHTML=`
+        <div class="mf"><label>Ссылка для сотрудника</label><input id="tmmLink" readonly value="${K.escapeHtml(r.url)}" style="width:100%"></div>
+        <div style="font-size:11.5px;color:var(--ink-3);line-height:1.5;background:var(--surface-2);padding:11px 13px;border-radius:11px">Отправьте эту ссылку сотруднику. Она действует 7 дней и станет недействительной после первого использования.</div>`;
+      bg.querySelector('.modal-ft').innerHTML=`<button class="btn ghost" id="tmmCopy" type="button">Копировать</button><button class="btn" id="tmmShare" type="button">Поделиться</button><button class="btn ghost" id="tmmDone" type="button">Готово</button>`;
+      bg.querySelector('#tmmCopy').addEventListener('click',async()=>{
+        try{ await navigator.clipboard.writeText(r.url); mToast('Ссылка скопирована','📋'); }
+        catch{ const inp=bg.querySelector('#tmmLink'); inp.focus(); inp.select(); mToast('Ссылка выделена — скопируйте вручную','!'); }
+      });
+      bg.querySelector('#tmmShare').addEventListener('click',async()=>{
+        if(navigator.share){
+          try{ await navigator.share({title:'Приглашение в Rento',text:`${nameHint}, приглашение в Rento`,url:r.url}); }
+          catch(err){ if(err?.name!=='AbortError') mToast('Не удалось поделиться','!'); }
+        }else{
+          try{ await navigator.clipboard.writeText(r.url); mToast('Ссылка скопирована','📋'); }
+          catch{ const inp=bg.querySelector('#tmmLink'); inp.focus(); inp.select(); mToast('Ссылка выделена — скопируйте вручную','!'); }
+        }
+      });
+      bg.querySelector('#tmmDone').addEventListener('click',close);
+    }catch(err){
+      mToast(err.message||'Не удалось создать ссылку','!');
+      saveBtn.disabled=false;
+    }
   });
   setTimeout(()=>bg.querySelector('#tmmName')?.focus(),50);
 }
